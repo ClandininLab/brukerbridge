@@ -161,7 +161,7 @@ def create_nii_file(timepoint_range, num_channels, num_timepoints, num_z, num_y,
         sys.stdout.flush()
 
         aff = np.eye(4)
-        save_name = xml_file[:-4] + '_channel_{}'.format(channel+1) + str(timepoint_start) + '.nii'
+        save_name = xml_file[:-4] + '_channel_{}'.format(channel+1) + '_s' str(timepoint_start) + '.nii'
         if isVolumeSeries:
             img = nib.Nifti1Image(image_array, aff) # 32 bit: maxes out at 32767 in any one dimension
         else:
