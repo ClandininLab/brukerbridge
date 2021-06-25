@@ -55,15 +55,54 @@ def tiff_to_nii(xml_file):
     print('num_y: {}'.format(num_y))
     print('num_x: {}'.format(num_x))
 
+
+    ##determine if it is too big for memory
+    ##create range of timepoints to use
+    size = num_timepoints * num_z * num_y * num_x
+    #max_timepoints = 3384 #this number comes from Luke's data where the memory is sufficient to process the nii file. The other dimensions matter too in terms of overall size (256 x 128 x 49), but for now I'll assume the other dims are similar
+    max_timepoints = 1000 #still memory error so going lower
+
+    #this will give all the starting points for the different broken up nii files
+    timepoint_starts = list(range(0,num_timepoints, max_timepoints))
+    print('timepoint_starts = ', timepoint_starts)
+    timepoint_ends = []
+    for t_index in range(len(timepoint_starts)):
+        if timepoint_starts[t_index] == timepoint_starts[-1]: #if it's the last element in the list (may also be the first)
+            timepoint_ends.append(num_timepoints) #so it goes until the end
+        else:
+            timepoint_ends.append(timepoint_starts[t_index+1]-1) #goes until the just before the next timepoint should start
+
+    timepoint_ranges = list(zip(timepoint_starts, timepoint_ends))
+
+    ##run function for creating nii file(s)
+    #run through each set of timepoints to make the different nii files
+    for i in range(len(timepoint_ranges)):
+        create_nii_file(timepoint_ranges[i], num_channels, num_timepoints, num_z, num_y, num_x, isVolumeSeries, isBidirectionalZ, sequences, xml_file, data_dir)
+     
+        
+        
+
+def get_num_channels(sequence):
+    frame = sequence.findall('Frame')[0]
+    files = frame.findall('File')
+    return len(files)
+
+
+def create_nii_file(timepoint_range, num_channels, num_timepoints, num_z, num_y, num_x, isVolumeSeries, isBidirectionalZ, sequences, xml_file, data_dir):
+    """this creates a nii file in the same way as before, but it creates seperate nii files if the original data is bigger than the size memory allows.
+    The save name appends on the starting frame number to keep the files seperate
+    timepoint_range is a tuple that contains (timepoint_start, timepoint_end) for each set"""
     # loop over channels
     for channel in range(num_channels):
+        timepoint_start = timepoint_range[0]
+        timepoint_end = timepoint_range[1]
         last_num_z = None
-        image_array = np.zeros((num_timepoints, num_z, num_y, num_x), dtype=np.uint16)
+        image_array = np.zeros(((timepoint_end-timepoint_start), num_z, num_y, num_x), dtype=np.uint16)
         print('Created empty array of shape {}'.format(image_array.shape))
         # loop over time
-        for i in range(num_timepoints):
+        for i in range(timepoint_start, timepoint_end):
             if i%10 == 0:
-                print('{}/{}'.format(i+1, num_timepoints))
+                print('{}/{}'.format(i+1, timepoint_start-timepoint_end))
             
             if isVolumeSeries: # For a given volume, get all frames
                 frames = sequences[i].findall('Frame')
@@ -122,7 +161,7 @@ def tiff_to_nii(xml_file):
         sys.stdout.flush()
 
         aff = np.eye(4)
-        save_name = xml_file[:-4] + '_channel_{}'.format(channel+1) + '.nii'
+        save_name = xml_file[:-4] + '_channel_{}'.format(channel+1) + str(timepoint_start) + '.nii'
         if isVolumeSeries:
             img = nib.Nifti1Image(image_array, aff) # 32 bit: maxes out at 32767 in any one dimension
         else:
@@ -135,10 +174,6 @@ def tiff_to_nii(xml_file):
         time.sleep(10)
         print('Sleep over')
 
-def get_num_channels(sequence):
-    frame = sequence.findall('Frame')[0]
-    files = frame.findall('File')
-    return len(files)
 
 def convert_tiff_collections_to_nii(directory): 
     for item in os.listdir(directory):

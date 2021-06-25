@@ -1,0 +1,6 @@
+{
+    "oak_target": "X:/data/krave/bruker_data/imports",
+    "convert_to": "nii",
+    "email": "krave@stanford.edu",
+    "add_to_build_que": "False"
+}
