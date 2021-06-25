@@ -77,7 +77,7 @@ def tiff_to_nii(xml_file):
     ##run function for creating nii file(s)
     #run through each set of timepoints to make the different nii files
     for i in range(len(timepoint_ranges)):
-        create_nii_file(timepoint_ranges[i], num_channels, num_timepoints, num_z, num_y, num_x, isVolumeSeries, isBidirectionalZ, sequences, xml_file, data_dir)
+        create_nii_file(timepoint_ranges[i], num_channels, num_timepoints, num_z, num_y, num_x, isVolumeSeries, isBidirectionalZ, sequences, xml_file, data_dir, aborted)
      
         
         
@@ -88,7 +88,7 @@ def get_num_channels(sequence):
     return len(files)
 
 
-def create_nii_file(timepoint_range, num_channels, num_timepoints, num_z, num_y, num_x, isVolumeSeries, isBidirectionalZ, sequences, xml_file, data_dir):
+def create_nii_file(timepoint_range, num_channels, num_timepoints, num_z, num_y, num_x, isVolumeSeries, isBidirectionalZ, sequences, xml_file, data_dir, aborted):
     """this creates a nii file in the same way as before, but it creates seperate nii files if the original data is bigger than the size memory allows.
     The save name appends on the starting frame number to keep the files seperate
     timepoint_range is a tuple that contains (timepoint_start, timepoint_end) for each set"""
