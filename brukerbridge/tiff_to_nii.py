@@ -60,7 +60,7 @@ def tiff_to_nii(xml_file):
     ##create range of timepoints to use
     size = num_timepoints * num_z * num_y * num_x
     #max_timepoints = 3384 #this number comes from Luke's data where the memory is sufficient to process the nii file. The other dimensions matter too in terms of overall size (256 x 128 x 49), but for now I'll assume the other dims are similar
-    max_timepoints = 1000 #still memory error so going lower
+    max_timepoints = 1000 #still memory error so going to 1000
 
     #this will give all the starting points for the different broken up nii files
     timepoint_starts = list(range(0,num_timepoints, max_timepoints))
@@ -76,6 +76,7 @@ def tiff_to_nii(xml_file):
 
     ##run function for creating nii file(s)
     #run through each set of timepoints to make the different nii files
+    print('timepoint ranges: ', timepoint_ranges)
     for i in range(len(timepoint_ranges)):
         create_nii_file(timepoint_ranges[i], num_channels, num_timepoints, num_z, num_y, num_x, isVolumeSeries, isBidirectionalZ, sequences, xml_file, data_dir, aborted)
      
@@ -102,8 +103,9 @@ def create_nii_file(timepoint_range, num_channels, num_timepoints, num_z, num_y,
         print('Created empty array of shape {}'.format(image_array.shape))
         # loop over time
         for i in range(timepoint_start, timepoint_end):
+            print('range: ', range(timepoint_start, timepoint_end))
             if i%10 == 0:
-                print('{}/{}'.format(i+1, timepoint_start-timepoint_end))
+                print('{}/{}'.format(i+1, timepoint_end-timepoint_start))
             
             if isVolumeSeries: # For a given volume, get all frames
                 frames = sequences[i].findall('Frame')
@@ -129,6 +131,7 @@ def create_nii_file(timepoint_range, num_channels, num_timepoints, num_z, num_y,
                 # For a given frame, get filename
                 files = frame.findall('File')
                 filename = files[channel].get('filename')
+                #print(filename)
                 fullfile = os.path.join(data_dir, filename)
 
                 # Read in file
@@ -196,9 +199,12 @@ def convert_tiff_collections_to_nii(directory):
                     # Also, verify that this folder doesn't already contain any .niis
                     # This is useful if rebooting the pipeline due to some error, and
                     # not wanting to take the time to re-create the already made niis
-                    for item in os.listdir(directory):
-                        if item.endswith('.nii'):
-                            print('skipping nii containing folder: {}'.format(directory))
-                            break
-                    else:
-                        tiff_to_nii(new_path)
+
+                    ##commenting this out for now 20210702 
+                    # for item in os.listdir(directory):
+                    #     if item.endswith('.nii'):
+                    #         print('skipping nii containing folder: {}'.format(directory))
+                    #         break
+                    # else:
+                    #     tiff_to_nii(new_path)
+                    tiff_to_nii(new_path)
