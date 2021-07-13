@@ -136,7 +136,7 @@ def create_nii_file(timepoint_range, num_channels, num_timepoints, num_z, num_y,
 
                 # Read in file
                 img = imread(fullfile)
-                image_array[i,j,:,:] = img
+                image_array[i - timepoint_start,j,:,:] = img
 
             # print memory info periodically
             if i%10 == 0:
