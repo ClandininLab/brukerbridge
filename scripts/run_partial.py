@@ -1,13 +1,13 @@
 import brukerbridge as bridge
 
-extensions_for_oak_transfer = ['.nii', '.csv', '.xml', 'json'] # last 4 chars
+extensions_for_oak_transfer = ['.nii', '.csv', '.xml', 'json', '.txt'] # last 4 chars
 
 ### Directory on this computer to process ###
 # full_target = 'G:/Max/20210611'
 # full_target = 'G:/Tim/20210427'
 # full_target = 'G:/Avery/20210614'
-full_target = 'G:/Ashley/20210723'
-#full_target = 'F:/Ashley/20210709'
+full_target = 'G:/Ashley/20210802'
+#full_target = 'F:/Ashley/20210709_2'
 #full_target = 'X:/data/Ashley2/imaging_raw/20210709'
 
 ### Oak target ###

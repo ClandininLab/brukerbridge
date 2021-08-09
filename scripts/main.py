@@ -7,7 +7,7 @@ import brukerbridge as bridge
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-extensions_for_oak_transfer = ['.nii', '.csv', '.xml', 'json', 'tiff'] # needs to be 4 char
+extensions_for_oak_transfer = ['.nii', '.csv', '.xml', 'json', 'tiff', '.txt'] # needs to be 4 char
 root_directory = "G:/"
 users_directory = "C:/Users/User/projects/brukerbridge/users"
 
