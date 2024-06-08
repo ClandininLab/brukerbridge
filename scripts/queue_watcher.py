@@ -18,28 +18,46 @@ def main():
 		time.sleep(0.1)
 
 def get_queued_folder():
-	low_queue = None
-	stripped_dir = None
-	for user_folder in os.listdir(root_directory):
-		### need to skip this weird file
-		if user_folder == 'System Volume Information':
-			continue
-		user_folder = os.path.join(root_directory, user_folder)
+	candidate_dir_fullpaths = []
 
-		if os.path.isdir(user_folder):
-			for potential_queued_folder in os.listdir(user_folder):
-				potential_queued_folder = os.path.join(user_folder, potential_queued_folder)
+	for user_dir in os.listdir(root_directory):
+		user_dir_fullpath = os.path.join(root_directory, user_dir)
 
-				if potential_queued_folder.endswith('__queue__'):
-					stripped_dir = potential_queued_folder[:-9]
-					return potential_queued_folder, stripped_dir ### Immediately return any queued folder found
+		if user_dir != 'System Volume Information' and os.path.isdir(user_dir_fullpath):
+			candidate_dir_fullpaths += [os.path.join(user_dir_fullpath, imaging_dir) for imaging_dir in os.listdir(user_dir_fullpath)]
 
-				if potential_queued_folder.endswith('__lowqueue__'):
-					low_queue = potential_queued_folder
+	high_priority_dir_fullpaths = [x for x in candidate_dir_fullpaths if x.endswith('__priority__')]
+	regular_dir_fullpaths = [x for x in candidate_dir_fullpaths if x.endswith('__queue__')]
+	low_priority_dir_fullpaths = [x for x in candidate_dir_fullpaths if x.endswith('__lowqueue__')]
 
-	if low_queue is not None:
-		stripped_dir = low_queue[:-12]
-	return low_queue, stripped_dir
+	print('Candidate imaging data directories:')
+	for cdfp in high_priority_dir_fullpaths + regular_dir_fullpaths + low_priority_dir_fullpaths:
+		print(f'  {cdfp}')
+
+	if len(high_priority_dir_fullpaths) > 0:
+		# Get the earliest date directory among the high_priority_dir_fullpaths
+		leaf_dirs = [os.path.basename(os.path.normpath(x)) for x in high_priority_dir_fullpaths]
+		sorted_indices = [i for i, value in sorted(enumerate(leaf_dirs), key=lambda x: x[1])]
+		chosen_dir_fullpath = high_priority_dir_fullpaths[sorted_indices[0]]
+		stripped_fullpath = chosen_dir_fullpath[:-12]
+	elif len(regular_dir_fullpaths) > 0:
+		leaf_dirs = [os.path.basename(os.path.normpath(x)) for x in regular_dir_fullpaths]
+		sorted_indices = [i for i, value in sorted(enumerate(leaf_dirs), key=lambda x: x[1])]
+		chosen_dir_fullpath = high_priority_dir_fullpaths[sorted_indices[0]]
+		stripped_fullpath = chosen_dir_fullpath[:-9]
+	elif len(low_priority_dir_fullpaths) > 0:
+		leaf_dirs = [os.path.basename(os.path.normpath(x)) for x in low_priority_dir_fullpaths]
+		sorted_indices = [i for i, value in sorted(enumerate(leaf_dirs), key=lambda x: x[1])]
+		chosen_dir_fullpath = high_priority_dir_fullpaths[sorted_indices[0]]
+		stripped_fullpath = chosen_dir_fullpath[:-12]
+	else:
+		chosen_dir_fullpath = None
+		stripped_fullpath = None
+
+	if chosen_dir_fullpath is not None:
+		print(f'Chosen: {chosen_dir_fullpath}')
+
+	return chosen_dir_fullpath, stripped_fullpath
 
 def get_banned_dirs():
 	banned_dir = 'C:/Users/User/projects/brukerbridge/banned_dirs'
