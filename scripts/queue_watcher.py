@@ -43,12 +43,12 @@ def get_queued_folder():
 	elif len(regular_dir_fullpaths) > 0:
 		leaf_dirs = [os.path.basename(os.path.normpath(x)) for x in regular_dir_fullpaths]
 		sorted_indices = [i for i, value in sorted(enumerate(leaf_dirs), key=lambda x: x[1])]
-		chosen_dir_fullpath = high_priority_dir_fullpaths[sorted_indices[0]]
+		chosen_dir_fullpath = regular_dir_fullpaths[sorted_indices[0]]
 		stripped_fullpath = chosen_dir_fullpath[:-9]
 	elif len(low_priority_dir_fullpaths) > 0:
 		leaf_dirs = [os.path.basename(os.path.normpath(x)) for x in low_priority_dir_fullpaths]
 		sorted_indices = [i for i, value in sorted(enumerate(leaf_dirs), key=lambda x: x[1])]
-		chosen_dir_fullpath = high_priority_dir_fullpaths[sorted_indices[0]]
+		chosen_dir_fullpath = low_priority_dir_fullpaths[sorted_indices[0]]
 		stripped_fullpath = chosen_dir_fullpath[:-12]
 	else:
 		chosen_dir_fullpath = None
@@ -64,7 +64,7 @@ def get_banned_dirs():
 	return os.listdir(banned_dir)
 
 def attempt_rename(source, target):
-	print(F'Attemping rename {source} to {source}')
+	print(F'Attemping rename {source} to {target}')
 	attempts = 3
 	while attempts > 0:
 		attempts-=1
