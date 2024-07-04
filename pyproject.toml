@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "brukerbridge"
+version = "0.1.1"
+authors = [
+  { name="Bella Brezovec", email="brezovec@stanford.edu" },
+  { name="Andrew Berger", email="a5b@stanford.edu" }
+
+]
+readme = "README.md"
+requires-python = ">=3.8"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows"
+]
+dependencies = [
+   "nibabel",
+   "numpy",
+   "scikit-image",
+   "matplotlib",
+   "tiffile",
+   "ftputil"
+]
+
+
+[project.urls]
+Homepage = "https://github.com/ClandininLab/brukerbridge"
+
+[tool.isort]
+known_first_party=["brukerbridge"]
