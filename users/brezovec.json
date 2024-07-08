@@ -1,5 +1,5 @@
 {
-    "oak_target": "X:/data/yandan/2P_Imaging/import",
+    "oak_target": "X:/data/Brezovec/2P_Imaging/imports",
     "convert_to": "nii",
     "email": "yandanw@stanford.edu",
     "add_to_build_que": "True",
