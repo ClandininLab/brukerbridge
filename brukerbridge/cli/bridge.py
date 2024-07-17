@@ -274,6 +274,12 @@ def main(root_dir=None):
                 for acq_path in list(pending_acqs):
                     user_name = acq_path.parent.parent.name
 
+                    if acq_path in ripper_processes or acq_path in rip_queue:
+                        continue
+
+                    if acq_path in tiff_futures:
+                        continue
+
                     if acq_path in oak_io_futures:
                         continue
 
