@@ -405,10 +405,3 @@ def acq_path_prefix(acq_path):
         return acq_path.name[:-12]
     else:
         raise RuntimeError(f"Invalid suffix: {acq_path}")
-
-
-# TODO: figure out how this interacts with using pyproject to set this as an executable
-# main must be guarded when using the multiprocessing module
-if __name__ == "__main__":
-    multiprocessing.freeze_support()
-    main()
