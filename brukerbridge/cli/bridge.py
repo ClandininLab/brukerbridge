@@ -26,7 +26,8 @@ from brukerbridge.utils import package_path
 
 logger = logging.getLogger()
 
-ROOT_DIR = "H:/"
+# can be overridden by argument to module main
+DEFAULT_ROOT_DIR = "H:/test-data"
 LOG_DIR = "C:/Users/User/logs"
 
 EXTENSION_WHITELIST = [
@@ -49,7 +50,7 @@ MAX_TIFF_WORKERS = 4
 MAX_OAK_WORKERS = 4
 
 
-def main():
+def main(root_dir=None):
     configure_logging(LOG_DIR)
     log_queue = multiprocessing.Manager().Queue(-1)
     log_thread = threading.Thread(target=logger_thread, args=(log_queue,))
@@ -84,7 +85,7 @@ def main():
                 # ============ LOOK FOR NEW ACQUISITIONS  ============
                 # ====================================================
 
-                marked_acqs = find_queued_acquisitions(pending_acqs)
+                marked_acqs = find_queued_acquisitions(root_dir or DEFAULT_ROOT_DIR, pending_acqs)
                 rip_queue.extend(marked_acqs)
                 for marked_acq in marked_acqs:
                     logger.info("Queued %s for processing", format_acq_path(marked_acq))
@@ -112,6 +113,7 @@ def main():
 
                 # start new rippers up to the limit
                 while len(ripper_processes) <= MAX_RIPPERS:
+                    if
                     acq_path = rip_queue.popleft()
                     pending_acqs.add(acq_path)
 
@@ -307,7 +309,7 @@ def ripping_complete(acquisition_path):
     return len(glob(f"{acquisition_path}/*_RAWDATA_*")) == 0
 
 
-def find_queued_acquisitions(pending_acquisitions):
+def find_queued_acquisitions(root_dir, pending_acquisitions):
     """Searches for acquisitions under ROOT_DIR marked for processing
 
     A queued acquisition is a directory containing a valid PraireView XML file
@@ -325,7 +327,7 @@ def find_queued_acquisitions(pending_acquisitions):
 
     # recursive glob is expensive due to the large number of .tiffs, so marked
     # directories must be at fixed depth
-    marked_dirs = glob(f"{ROOT_DIR}/*/*__queue__") + glob(f"{ROOT_DIR}/*/*__lowqueue__")
+    marked_dirs = glob(f"{root_dir}/*/*__queue__") + glob(f"{root_dir}/*/*__lowqueue__")
     marked_dirs = [Path(m).resolve() for m in marked_dirs]
     logger.debug("Marked dirs: %s", marked_dirs)
 
