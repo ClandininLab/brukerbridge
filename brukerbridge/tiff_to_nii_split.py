@@ -5,7 +5,6 @@ from xml.etree import ElementTree as ET
 
 import nibabel as nib
 import numpy as np
-import psutil
 from matplotlib.pyplot import imread
 
 
@@ -171,12 +170,6 @@ def create_nii_file(
                 img = imread(fullfile)
                 image_array[i - timepoint_start, j, :, :] = img
 
-            # print memory info periodically
-            if i % 10 == 0:
-                memory_usage = psutil.Process(os.getpid()).memory_info().rss * 10**-9
-                print("Current memory usage: {:.2f}GB".format(memory_usage))
-                sys.stdout.flush()
-
         if isVolumeSeries:
             # Will start as t,z,x,y. Want y,x,z,t
             image_array = np.moveaxis(image_array, 1, -1)  # Now t,x,y,z
@@ -192,10 +185,6 @@ def create_nii_file(
             image_array = np.swapaxes(image_array, 0, 1)  # y, x, t
 
         print("Final array shape = {}".format(image_array.shape))
-
-        memory_usage = psutil.Process(os.getpid()).memory_info().rss * 10**-9
-        print("Current memory usage: {:.2f}GB".format(memory_usage))
-        sys.stdout.flush()
 
         aff = np.eye(4)
         save_name = (

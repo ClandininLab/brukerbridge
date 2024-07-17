@@ -4,7 +4,6 @@ from xml.etree import ElementTree as ET
 
 import nibabel as nib
 import numpy as np
-import psutil
 from skimage import io
 
 import brukerbridge as bridge
@@ -143,21 +142,6 @@ def tiff_to_nii(xml_file):
                         # Read in file
                         img = io.imread(fullfile, plugin="pil")
                         image_array[i, j, :, :] = img
-
-                ######################
-                ### Print Progress ###
-                ######################
-                memory_usage = int(
-                    psutil.Process(os.getpid()).memory_info().rss * 10**-9
-                )
-                bridge.print_progress_table(
-                    start_time=start_time,
-                    current_iteration=i,
-                    total_iterations=num_timepoints,
-                    current_mem=memory_usage,
-                    total_mem=32,
-                    mode="tiff_convert",
-                )
 
         if isVolumeSeries:
             # Will start as t,z,x,y. Want y,x,z,t
