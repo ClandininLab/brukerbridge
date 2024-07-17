@@ -85,7 +85,9 @@ def main(root_dir=None):
                 # ============ LOOK FOR NEW ACQUISITIONS  ============
                 # ====================================================
 
-                marked_acqs = find_queued_acquisitions(root_dir or DEFAULT_ROOT_DIR, pending_acqs)
+                marked_acqs = find_queued_acquisitions(
+                    root_dir or DEFAULT_ROOT_DIR, pending_acqs
+                )
                 rip_queue.extend(marked_acqs)
                 for marked_acq in marked_acqs:
                     logger.info("Queued %s for processing", format_acq_path(marked_acq))
@@ -113,7 +115,9 @@ def main(root_dir=None):
 
                 # start new rippers up to the limit
                 while len(ripper_processes) <= MAX_RIPPERS:
-                    if
+                    if not rip_queue:
+                        break
+
                     acq_path = rip_queue.popleft()
                     pending_acqs.add(acq_path)
 
