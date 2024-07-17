@@ -339,7 +339,10 @@ def find_queued_acquisitions(root_dir, pending_acquisitions):
 
     for marked_dir in marked_dirs:
         # users who have provided a config file
-        user_names = [f.split(".")[0] for f in os.listdir(f"{package_path()}/users")]
+        user_names = [
+            f.split(".")[0]
+            for f in os.listdir(Path(package_path()).parent / Path("users"))
+        ]
 
         # check that marked dirs have a suer config
         if not marked_dir.parent.name in user_names:
