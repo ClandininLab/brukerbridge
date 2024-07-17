@@ -30,8 +30,5 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/ClandininLab/brukerbridge"
 
-[project.scripts]
-bridge = "brukerbridge.cli:main"
-
 [tool.isort]
 known_first_party=["brukerbridge"]
