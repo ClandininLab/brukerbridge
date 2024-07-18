@@ -333,8 +333,6 @@ def find_queued_acquisitions(root_dir, pending_acquisitions):
     Returns:
       queued_acquisitions - [str]
     """
-    logger = logging.getLogger(__name__)
-
     # recursive glob is expensive due to the large number of .tiffs, so marked
     # directories must be at fixed depth
     marked_dirs = glob(f"{root_dir}/*/*__queue__") + glob(f"{root_dir}/*/*__lowqueue__")
@@ -350,7 +348,7 @@ def find_queued_acquisitions(root_dir, pending_acquisitions):
             for f in os.listdir(Path(package_path()).parent / Path("users"))
         ]
 
-        # check that marked dirs have a suer config
+        # check that marked dirs have a user config
         if not marked_dir.parent.name in user_names:
             logging.error(
                 "Cannot process marked directory due to missing user config: %s",
@@ -377,12 +375,17 @@ def contains_valid_pvscan_xml(acquisition_path):
     """Checks that acquisition dir contains a parsable XML file made with the
     correct version of PrarieView
     """
-    logger = logging.getLogger(__name__)
-
     for xml_file in glob(f"{acquisition_path}/*.xml"):
         try:
             tree = ElementTree.parse(xml_file)
             root = tree.getroot()
+
+            if root.attrib["version"] != SUPPORTED_PRAIREVIEW_VERSION:
+                logger.error(
+                    "XML created by unsupported version of PraireView: %s",
+                    xml_file,
+                )
+                continue
 
             if root.tag == "PVScan":
                 break
@@ -393,15 +396,14 @@ def contains_valid_pvscan_xml(acquisition_path):
                 Path(xml_file).name,
                 acquisition_path,
             )
+        except KeyError:
+            logger.exception(
+                "XML %s root has no `version` attribute. Are you sure you've got the right files?",
+                xml_file,
+            )
     else:
         logger.error(
-            "Missing or unparseable PVScan XML file in acquisition %s", acquisition_path
-        )
-        return False
-
-    if root.attrib["version"] != SUPPORTED_PRAIREVIEW_VERSION:
-        logger.error(
-            "Acquisition cannot be processed because it was recorded with an unsupported version of PraireView: %s",
+            "Missing or unparseable PVScan XML file in acquisition %s. Cannot process acquisition.",
             acquisition_path,
         )
         return False
