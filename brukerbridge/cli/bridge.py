@@ -62,7 +62,7 @@ def main(root_dir=None):
     fictrac_io_queue = deque()
 
     # acquisitions in any stage of processing
-    pending_acqs = set()
+    in_process_acqs = set()
 
     # acq_path: Popen
     ripper_processes = dict()
@@ -85,8 +85,8 @@ def main(root_dir=None):
                 # ============ LOOK FOR NEW ACQUISITIONS  ============
                 # ====================================================
 
-                marked_acqs = find_queued_acquisitions(
-                    root_dir or DEFAULT_ROOT_DIR, pending_acqs
+                marked_acqs = find_marked_acquisitions(
+                    root_dir or DEFAULT_ROOT_DIR, in_process_acqs
                 )
                 rip_queue.extend(marked_acqs)
                 for marked_acq in marked_acqs:
@@ -119,7 +119,7 @@ def main(root_dir=None):
                         break
 
                     acq_path = rip_queue.popleft()
-                    pending_acqs.add(acq_path)
+                    in_process_acqs.add(acq_path)
 
                     # TODO: review ripper arguments
                     # on windows args is converted to a string anyways
@@ -271,7 +271,7 @@ def main(root_dir=None):
                 # ============ BOOKKEEPING ===========
                 # ====================================
 
-                for acq_path in list(pending_acqs):
+                for acq_path in list(in_process_acqs):
                     user_name = acq_path.parent.parent.name
 
                     if acq_path in ripper_processes or acq_path in rip_queue:
@@ -289,14 +289,12 @@ def main(root_dir=None):
                     # we're all done and can remove the __queue__ suffix
                     os.rename(acq_path, acq_path.parent / acq_path_prefix(acq_path))
 
-                    pending_acqs.remove(acq_path)
+                    in_process_acqs.remove(acq_path)
 
                     logger.info("All work complete for %s", format_acq_path(acq_path))
 
-                for pending_acq in pending_acqs:
-                    logger.info(
-                        "Work still pending for %s", format_acq_path(pending_acq)
-                    )
+                for in_process_acq in in_process_acqs:
+                    logger.info("Still processing %s", format_acq_path(in_process_acq))
                 time.sleep(30)
     except Exception as unhandled_exception:
         logger.critical("Fatal exception", exc_info=True)
@@ -319,19 +317,22 @@ def ripping_complete(acquisition_path):
     return len(glob(f"{acquisition_path}/*_RAWDATA_*")) == 0
 
 
-def find_queued_acquisitions(root_dir, pending_acquisitions):
+def find_marked_acquisitions(root_dir, in_process_acqs):
     """Searches for acquisitions under ROOT_DIR marked for processing
 
-    A queued acquisition is a directory containing a valid PraireView XML file
-    contained in a directory suffixed by '__queue__' or '__lowqueue__'
+    A marked acquisition is a directory suffixed by '__queue__' or
+    '__lowqueue__' that contains a valid PraireView XML file
 
-    Those suffixed by '__lowqueue__' are added to the back of the queue
+    Those suffixed by '__lowqueue__' are added to the back of the queue,
+    although in practice lowqueue is deprecated since acquisitions are
+    processed in parallel. Don't use it.
 
     Args:
-      pending_acquisitions: acquisitions which have already been queued and will be ignored - [Path]
+      in_process_acqs: acquisitions which have already been queued and can be ignored - [Path]
 
     Returns:
-      queued_acquisitions - [str]
+      marked_acquisitions - [str]
+
     """
     # recursive glob is expensive due to the large number of .tiffs, so marked
     # directories must be at fixed depth
@@ -339,7 +340,7 @@ def find_queued_acquisitions(root_dir, pending_acquisitions):
     marked_dirs = [Path(m).resolve() for m in marked_dirs]
     logger.debug("Marked dirs: %s", marked_dirs)
 
-    queued_acquisitions = []
+    marked_acquisitions = []
 
     for marked_dir in marked_dirs:
         # users who have provided a config file
@@ -356,24 +357,18 @@ def find_queued_acquisitions(root_dir, pending_acquisitions):
             )
 
         for acq_path in marked_dir.iterdir():
-            if acq_path in pending_acquisitions:
+            if acq_path in in_process_acqs:
                 continue
 
-            if contains_valid_pvscan_xml(acq_path):
-                # add to queue
-                queued_acquisitions.append(acq_path)
-            else:
-                logger.error(
-                    "Cannot process acquisition %s because valid PVScan xml could not be found",
-                    acq_path,
-                )
+            if contains_valid_xml(acq_path):
+                marked_acquisitions.append(acq_path)
 
-    return queued_acquisitions
+    return marked_acquisitions
 
 
-def contains_valid_pvscan_xml(acquisition_path):
-    """Checks that acquisition dir contains a parsable XML file made with the
-    correct version of PrarieView
+def contains_valid_xml(acquisition_path):
+    """Checks that acquisition dir contains a parsable PVScan XML file made with the
+    correct version of PrarieView.
     """
     for xml_file in glob(f"{acquisition_path}/*.xml"):
         try:
@@ -388,7 +383,18 @@ def contains_valid_pvscan_xml(acquisition_path):
                 continue
 
             if root.tag == "PVScan":
-                break
+                first_seq = root[2]
+                assert first_seq.tag == "Sequence"
+
+                # ZSeries and single plane Tseries have types 'TSeries ZSeries Element'
+                # and 'TSeries Timed Element' respectively
+                if first_seq.attrib["type"] == "Single":
+                    logger.debug(
+                        "Ignoring SingleImage acquisition %s", acquisition_path
+                    )
+                    return False
+
+                return True
 
         except ElementTree.ParseError:
             logger.exception(
@@ -396,9 +402,9 @@ def contains_valid_pvscan_xml(acquisition_path):
                 Path(xml_file).name,
                 acquisition_path,
             )
-        except KeyError:
+        except (KeyError, AssertionError):
             logger.exception(
-                "XML %s root has no `version` attribute. Are you sure you've got the right files?",
+                "XML %s does not have the expected structure. Are you sure you've got the right files?",
                 xml_file,
             )
     else:
@@ -407,8 +413,6 @@ def contains_valid_pvscan_xml(acquisition_path):
             acquisition_path,
         )
         return False
-
-    return True
 
 
 def format_acq_path(acq_path):
