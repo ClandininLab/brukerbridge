@@ -7,6 +7,7 @@ import sys
 from datetime import datetime
 from email.mime.text import MIMEText
 from functools import wraps
+from pathlib import Path
 from time import time
 
 import numpy as np
@@ -16,7 +17,7 @@ import brukerbridge
 
 def package_path():
     """Returns the absolute path to this package base directory"""
-    return os.path.dirname(inspect.getfile(brukerbridge))
+    return Path(inspect.getfile(brukerbridge)).parent.parent
 
 
 def sec_to_hms(t):

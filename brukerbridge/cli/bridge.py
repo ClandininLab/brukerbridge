@@ -344,10 +344,7 @@ def find_marked_acquisitions(root_dir, in_process_acqs):
 
     for marked_dir in marked_dirs:
         # users who have provided a config file
-        user_names = [
-            f.split(".")[0]
-            for f in os.listdir(Path(package_path()).parent / Path("users"))
-        ]
+        user_names = [f.split(".")[0] for f in os.listdir(package_path() / "users")]
 
         # check that marked dirs have a user config
         if not marked_dir.parent.name in user_names:
