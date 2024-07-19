@@ -209,7 +209,7 @@ def main(root_dir=None):
                         worker_process,
                         start_oak_transfer,
                         log_queue,
-                        acq_path,
+                        str(acq_path),
                         config["oak_target"],
                         EXTENSION_WHITELIST,
                         config["add_to_build_que"],
