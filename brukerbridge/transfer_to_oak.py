@@ -1,7 +1,10 @@
+import logging
 import os
 import time
 from datetime import datetime
 from shutil import copyfile
+
+logger = logging.getLogger(__name__)
 
 
 def transfer_to_oak(source, target, allowable_extensions, verbose):
@@ -99,10 +102,24 @@ def start_oak_transfer(
     if add_to_build_que in ["True", "true"]:
         folder = os.path.split(directory_to)[-1]
         queue_file = os.path.join(oak_target, "build_queue", folder)
-        file = open(queue_file, "w+")
-        file.close()
+        try:
+            _touch(queue_file)
+        except FileNotFoundError:
+            os.mkdir(os.path.join(oak_target, "build_queue"))
+            logger.warning(
+                "Created missing build_queue dir: %s. You should review its permissions",
+                os.path.join(oak_target, "build_queue"),
+            )
+
+            _touch(queue_file)
+
         print("Added {} to build queue.".format(folder))
     else:
         print("Add to build queue is False.")
         # os.rename(directory_to, directory_to + '__done__')
         # print('Added __done__ flag')
+
+
+def _touch(fp):
+    with open(fp, "w+"):
+        pass
