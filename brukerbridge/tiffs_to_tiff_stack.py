@@ -27,7 +27,6 @@ def convert_tiff_collections_to_stack(directory):
 
 def tiffs_to_stack(directory):
     stack_fn = os.path.join(directory, "stack.tiff")
-    print("Creating tiff stack from {}".format(directory))
     with tifffile.TiffWriter(stack_fn, imagej=True) as stack:
         # For some reason, the first tif file grabs the whole stack, so saving
         #   only the first tif file using stack.save is sufficient...

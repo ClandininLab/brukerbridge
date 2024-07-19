@@ -1,5 +1,5 @@
+import logging
 import os
-import sys
 import time
 from xml.etree import ElementTree as ET
 
@@ -7,11 +7,12 @@ import nibabel as nib
 import numpy as np
 from matplotlib.pyplot import imread
 
+logger = logging.getLogger(__name__)
+
 
 def tiff_to_nii(xml_file):
     aborted = False
     data_dir, _ = os.path.split(xml_file)
-    print("Converting tiffs to nii in directory: \n{}".format(data_dir))
 
     tree = ET.parse(xml_file)
     root = tree.getroot()
@@ -24,7 +25,7 @@ def tiff_to_nii(xml_file):
         isBidirectionalZ = True
     else:
         isBidirectionalZ = False
-    print("BidirectionalZ is {}".format(isBidirectionalZ))
+    logger.debug("%s, BidirectionalZ: %s", xml_file, isBidirectionalZ)
 
     # Get axis dims
     if (
@@ -43,8 +44,7 @@ def tiff_to_nii(xml_file):
         num_timepoints = len(sequences)
         num_z = len(sequences[0].findall("Frame"))
         isVolumeSeries = True
-
-    print("isVolumeSeries is {}".format(isVolumeSeries))
+    logger.debug("%s, isVolumeSeries: %s", xml_file, isVolumeSeries)
 
     num_channels = get_num_channels(sequences[0])
     test_file = sequences[0].findall("Frame")[0].findall("File")[0].get("filename")
@@ -52,11 +52,15 @@ def tiff_to_nii(xml_file):
     img = imread(fullfile)
     num_y = np.shape(img)[0]
     num_x = np.shape(img)[1]
-    print("num_channels: {}".format(num_channels))
-    print("num_timepoints: {}".format(num_timepoints))
-    print("num_z: {}".format(num_z))
-    print("num_y: {}".format(num_y))
-    print("num_x: {}".format(num_x))
+    logger.debug(
+        "%s, num_channels: %s, num_timepoints: %s, num_z: %s, num_y, num_x: %s",
+        xml_file,
+        num_channels,
+        num_timepoints,
+        num_z,
+        num_y,
+        num_x,
+    )
 
     ##determine if it is too big for memory
     ##create range of timepoints to use
@@ -66,7 +70,7 @@ def tiff_to_nii(xml_file):
 
     # this will give all the starting points for the different broken up nii files
     timepoint_starts = list(range(0, num_timepoints, max_timepoints))
-    print("timepoint_starts = ", timepoint_starts)
+    logger.debug("%s, timepoint_starts: %s", xml_file, timepoint_starts)
     timepoint_ends = []
     for t_index in range(len(timepoint_starts)):
         if (
@@ -82,12 +86,11 @@ def tiff_to_nii(xml_file):
 
     ##run function for creating nii file(s)
     # run through each set of timepoints to make the different nii files
-    print("timepoint ranges: ", timepoint_ranges)
+    logger.debug("%s, timepoint ranges: %s", xml_file, timepoint_ranges)
     for i in range(len(timepoint_ranges)):
         create_nii_file(
             timepoint_ranges[i],
             num_channels,
-            num_timepoints,
             num_z,
             num_y,
             num_x,
@@ -109,7 +112,6 @@ def get_num_channels(sequence):
 def create_nii_file(
     timepoint_range,
     num_channels,
-    num_timepoints,
     num_z,
     num_y,
     num_x,
@@ -127,26 +129,23 @@ def create_nii_file(
     for channel in range(num_channels):
         timepoint_start = timepoint_range[0]
         timepoint_end = timepoint_range[1]
-        print("frames: ", timepoint_start, timepoint_end)
+        logger.debug("%s, frames: %s-%s", xml_file, timepoint_start, timepoint_end)
         last_num_z = None
         image_array = np.zeros(
             ((timepoint_end - timepoint_start), num_z, num_y, num_x), dtype=np.uint16
         )
-        print("Created empty array of shape {}".format(image_array.shape))
         # loop over time
         for i in range(timepoint_start, timepoint_end):
-            print("range: ", range(timepoint_start, timepoint_end))
-            if i % 10 == 0:
-                print("{}/{}".format(i + 1, timepoint_end - timepoint_start))
-
             if isVolumeSeries:  # For a given volume, get all frames
                 frames = sequences[i].findall("Frame")
                 current_num_z = len(frames)
                 # Handle aborted scans for volumes
                 if last_num_z is not None:
                     if current_num_z != last_num_z:
-                        print("Inconsistent number of z-slices (scan aborted).")
-                        print("Tossing last volume.")
+                        # detected by "Inconsistent number of z-slices"
+                        logger.info(
+                            "%s: this acquisition was aborted, discarding last volume"
+                        )
                         aborted = True
                         break
                 last_num_z = current_num_z
@@ -184,7 +183,7 @@ def create_nii_file(
             image_array = np.moveaxis(image_array, 0, -1)  # x, y, t
             image_array = np.swapaxes(image_array, 0, 1)  # y, x, t
 
-        print("Final array shape = {}".format(image_array.shape))
+        logger.debug("%s, final array shape: {}", xml_file, image_array.shape)
 
         aff = np.eye(4)
         save_name = (
@@ -201,12 +200,14 @@ def create_nii_file(
         else:
             img = nib.Nifti2Image(image_array, aff)  # 64 bit
         image_array = None  # for memory
-        print("Saving nii as {}".format(save_name))
+        logger.debug("%s, saving nii as %s", xml_file, save_name)
         img.to_filename(save_name)
         img = None  # for memory
-        print("Saved! sleeping for 10 sec to help memory reconfigure...")
-        time.sleep(10)
-        print("Sleep over")
+
+        # NOTE berger 2024/07/18: previously there was a 10 second sleep here
+        # for "memory management". I suspect this is unnecessary but if OOM
+        # issues are experienced in this method in the future a gc.collect here
+        # may help
 
 
 def convert_tiff_collections_to_nii_split(directory):
