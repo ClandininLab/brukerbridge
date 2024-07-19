@@ -22,7 +22,7 @@ from brukerbridge.logging import (configure_logging, logger_thread,
                                   worker_process)
 from brukerbridge.transfer_fictrac import transfer_fictrac
 from brukerbridge.transfer_to_oak import start_oak_transfer
-from brukerbridge.utils import package_path
+from brukerbridge.utils import package_path, parse_malformed_json_bool
 
 logger = logging.getLogger()
 
@@ -143,7 +143,7 @@ def main(root_dir=None):
                     conversion_target = config["convert_to"]
 
                     if conversion_target == "nii":
-                        if config.get("split", False):
+                        if parse_malformed_json_bool(config.get("split", False)):
                             tiff_futures[acq_path] = tiff_executor.submit(
                                 worker_process,
                                 convert_tiff_collections_to_nii_split,
@@ -212,7 +212,9 @@ def main(root_dir=None):
                         str(acq_path),
                         config["oak_target"],
                         EXTENSION_WHITELIST,
-                        config.get("add_to_build_que", False),
+                        parse_malformed_json_bool(
+                            config.get("add_to_build_que", False)
+                        ),
                     )
 
                     logger.info(
@@ -247,7 +249,7 @@ def main(root_dir=None):
                     # recently done io for fictrac and can safely move on
                     # without trying again
                     if (
-                        config.get("transfer_fictrac", False)
+                        parse_malformed_json_bool(config.get("transfer_fictrac", False))
                         and user_name not in fictrac_io_futures
                     ):
                         # TODO: test multiple simultaneous FTP instances

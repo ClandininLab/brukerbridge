@@ -20,6 +20,26 @@ def package_path():
     return Path(inspect.getfile(brukerbridge)).parent.parent
 
 
+def parse_malformed_json_bool(field):
+    """Parses 'boolean' values from a parsed json that might have been written
+    accidentally as strings, as could happen if json was written manually.
+    returns the intended value
+    """
+    if isinstance(field, bool):
+        return field
+    elif isinstance(field, str):
+        if field.lower() in ("true", "false"):
+            return field.lower() == "true"
+        else:
+            raise RuntimeError(
+                f"String field with value '{field}' cannot be interpreted as a boolean. Refer to JSON spec"
+            )
+    else:
+        raise RuntimeError(
+            f"Field with type {type(field)} cannot be interpreted as a boolean"
+        )
+
+
 def sec_to_hms(t):
     secs = f"{np.floor(t%60):02.0f}"
     mins = f"{np.floor((t/60)%60):02.0f}"
