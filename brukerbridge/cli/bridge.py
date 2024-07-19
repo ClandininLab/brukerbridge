@@ -212,7 +212,7 @@ def main(root_dir=None):
                         str(acq_path),
                         config["oak_target"],
                         EXTENSION_WHITELIST,
-                        config["add_to_build_que"],
+                        config.get("add_to_build_que", False),
                     )
 
                     logger.info(
