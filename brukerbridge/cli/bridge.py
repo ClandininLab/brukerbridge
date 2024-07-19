@@ -158,7 +158,7 @@ def main(root_dir=None):
                                 str(acq_path),
                             )
 
-                        # to be precise, a process has been submitted to the
+                        # more precisely, a process has been submitted to the
                         # queue and will be spawned when the executor has an
                         # idle worker slot
                         logger.info(
