@@ -68,7 +68,7 @@ def tiff_to_nii(xml_file):
     num_y = np.shape(img)[-2]
     num_x = np.shape(img)[-1]
     logger.debug(
-        "%s, num_channels: %s, num_timepoints: %s, num_z: %s, num_y, num_x: %s",
+        "%s, num_channels: %s, num_timepoints: %s, num_z: %s, num_y: %s, num_x: %s",
         xml_file,
         num_channels,
         num_timepoints,
