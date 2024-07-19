@@ -72,5 +72,5 @@ def worker_process(fn, log_queue, *args):
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
     root.addHandler(qh)
-    logger.debug("Initialized worker logging")
+    logger.debug("Executing %s with args %s", fn.__name__, args)
     fn(*args)
