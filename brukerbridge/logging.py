@@ -6,6 +6,10 @@ logger = logging.getLogger(__name__)
 
 
 def configure_logging(log_dir):
+    """Three file handlers rotating once a day: INFO and above, DEBUG and above and ERROR
+
+    DEBUG level messages emitted by PIL are filtered out as it is extremely chatty (emits MB of logs in short order)
+    """
     logging_config = {
         "version": 1,
         "formatters": {
@@ -14,6 +18,7 @@ def configure_logging(log_dir):
                 "format": "%(asctime)s %(name)-15s %(levelname)-8s %(processName)-15s %(message)s",
             }
         },
+        "filters": {"filter_pil_debug": {"()": FilterDebug, "name": "PIL"}},
         "handlers": {
             "rh_info": {
                 "class": "logging.handlers.TimedRotatingFileHandler",
@@ -30,6 +35,7 @@ def configure_logging(log_dir):
                 "interval": 1,
                 "level": "DEBUG",
                 "formatter": "default",
+                "filters": ["filter_pil_debug"],
             },
             "rh_error": {
                 "class": "logging.handlers.TimedRotatingFileHandler",
@@ -52,6 +58,18 @@ def configure_logging(log_dir):
     }
 
     logging.config.dictConfig(logging_config)
+
+
+class FilterDebug(logging.Filter):
+    """Filter out all records at the DEBUG level for the 'name' logger and its descendants"""
+
+    def __init__(self, name):
+        self.name = name
+
+    def filter(self, record):
+        return not (
+            record.name.startswith(self.name) and record.levelno == logging.DEBUG
+        )
 
 
 def logger_thread(log_queue):
