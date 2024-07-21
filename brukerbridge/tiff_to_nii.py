@@ -145,7 +145,7 @@ def tiff_to_nii(xml_file):
             image_array = np.moveaxis(image_array, 0, -1)  # x, y, t
             image_array = np.swapaxes(image_array, 0, 1)  # y, x, t
 
-        logger.debug("%s, final array shape: {}", xml_file, image_array.shape)
+        logger.debug("%s, final array shape: %s", xml_file, image_array.shape)
 
         aff = np.eye(4)
         save_name = xml_file[:-4] + "_channel_{}".format(channel + 1) + ".nii"
