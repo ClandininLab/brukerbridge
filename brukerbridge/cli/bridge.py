@@ -295,8 +295,6 @@ def main(root_dir=None):
 
                     logger.info("All work complete for %s", format_acq_path(acq_path))
 
-                for in_process_acq in in_process_acqs:
-                    logger.info("Still processing %s", format_acq_path(in_process_acq))
                 time.sleep(30)
     except Exception as unhandled_exception:
         logger.critical("Fatal exception", exc_info=True)
