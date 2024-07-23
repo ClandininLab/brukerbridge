@@ -121,10 +121,10 @@ def main(root_dir=None):
                     acq_path = rip_queue.popleft()
                     in_process_acqs.add(acq_path)
 
-                    # TODO: review ripper arguments
-                    # on windows args is converted to a string anyways
+                    # NOTE: on windows args is converted to a string anyways, no need to parse
+                    # NOTE: double quotes on acq_path necessary to handle spaces.
                     ripper_processes[acq_path] = subprocess.Popen(
-                        f"{RIPPER_EXECUTABLE} -isf -arfwsf {acq_path} -cnv"
+                        f'{RIPPER_EXECUTABLE} -RipToInputDirectory -IncludeSubFolders -AddRawFileWithSubFolders "{acq_path}" -Convert -DeleteRaw'
                     )
 
                     logger.info(
