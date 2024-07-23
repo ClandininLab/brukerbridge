@@ -99,26 +99,22 @@ def main(root_dir=None):
                 # kill any rippers that have finished
                 for acq_path, ripper_process in list(ripper_processes.items()):
                     if ripping_complete(acq_path):
-                        # NOTE: sometimes ripper processes do not respond to
-                        # the SIGKILL signal. I was unable to replicate the
-                        # exact circumstances under which this occurs, but it
-                        # can happen that the ripper process does not appear to
-                        # finish until a few seconds after deleting the raw
-                        # files. so wait a few seconds and hope for the best
+                        # wait a few seconds after the raw files are deleted to ensure process is actually finished
                         time.sleep(5)
                         ripper_process.kill()
 
-                    logger.info(
-                        "Killed completed ripper process for %s",
-                        format_acq_path(acq_path),
-                    )
-                    logger.debug("Ripper pid %s", ripper_process.pid)
-                    del ripper_processes[acq_path]
+                        logger.info(
+                            "Killed completed ripper process for %s",
+                            format_acq_path(acq_path),
+                        )
+                        logger.debug("Ripper pid %s", ripper_process.pid)
+                        del ripper_processes[acq_path]
 
-                    tiff_queue.append(acq_path)
-                    logger.info(
-                        "%s added to tiff conversion queue", format_acq_path(acq_path)
-                    )
+                        tiff_queue.append(acq_path)
+                        logger.info(
+                            "%s added to tiff conversion queue",
+                            format_acq_path(acq_path),
+                        )
 
                 # start new rippers up to the limit
                 while len(ripper_processes) <= MAX_RIPPERS:
