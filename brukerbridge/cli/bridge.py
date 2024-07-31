@@ -330,11 +330,14 @@ def find_marked_acquisitions(root_dir, in_process_acqs):
     although in practice lowqueue is deprecated since acquisitions are
     processed in parallel. Don't use it.
 
+    If root_dir is 'F:/' each element of marked_acquisitions will be something
+    like Path('F:/user-name/date__queue__/TSeries_1')
+
     Args:
       in_process_acqs: acquisitions which have already been queued and can be ignored - [Path]
 
     Returns:
-      marked_acquisitions - [str]
+      marked_acquisitions - [Path]
 
     """
     # recursive glob is expensive due to the large number of .tiffs, so marked
