@@ -28,13 +28,13 @@ def tiff_to_nii(xml_file: str):
 
     # Get axis dims
     if (
-        root.find("Sequence").get("type") == "TSeries Timed Element"
+        root.find("Sequence").get("type") == "TSeries Timed Element"  # type: ignore
     ):  # Plane time series
         num_timepoints = len(sequences[0].findall("Frame"))
         num_z = 1
         isVolumeSeries = False
     elif (
-        root.find("Sequence").get("type") == "TSeries ZSeries Element"
+        root.find("Sequence").get("type") == "TSeries ZSeries Element"  # type: ignore
     ):  # Volume time series
         num_timepoints = len(sequences)
         num_z = len(sequences[0].findall("Frame"))
@@ -47,7 +47,7 @@ def tiff_to_nii(xml_file: str):
 
     num_channels = get_num_channels(sequences[0])
     test_file = sequences[0].findall("Frame")[0].findall("File")[0].get("filename")
-    fullfile = os.path.join(data_dir, test_file)
+    fullfile = os.path.join(data_dir, test_file)  # type: ignore
     img = imread(fullfile)
     num_y = np.shape(img)[0]
     num_x = np.shape(img)[1]
@@ -63,7 +63,6 @@ def tiff_to_nii(xml_file: str):
 
     ##determine if it is too big for memory
     ##create range of timepoints to use
-    size = num_timepoints * num_z * num_y * num_x
     # max_timepoints = 3384 #this number comes from Luke's data where the memory is sufficient to process the nii file. The other dimensions matter too in terms of overall size (256 x 128 x 49), but for now I'll assume the other dims are similar
     max_timepoints = 500  # still memory error so going to 1000
 
@@ -193,11 +192,11 @@ def create_nii_file(
             + ".nii"
         )
         if isVolumeSeries:
-            img = nib.Nifti1Image(
+            img = nib.nifti1.Nifti1Image(
                 image_array, aff
             )  # 32 bit: maxes out at 32767 in any one dimension
         else:
-            img = nib.Nifti2Image(image_array, aff)  # 64 bit
+            img = nib.nifti2.Nifti2Image(image_array, aff)  # 64 bit
         image_array = None  # for memory
         logger.debug("%s, saving nii as %s", xml_file, save_name)
         img.to_filename(save_name)

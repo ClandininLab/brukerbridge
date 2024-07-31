@@ -1,6 +1,6 @@
 import os
 import time
-from socket import *
+from socket import socket
 from time import strftime
 
 import brukerbridge as bridge
@@ -37,16 +37,15 @@ while True:
     total_gb_transfered = 0
     with client, client.makefile("rb") as clientfile:
 
+        source_directory_size = int(float(clientfile.readline().strip().decode()))
+        total_num_files = int(clientfile.readline().strip().decode())
+        start_time = time.time()
+        print(f"FIRST LOOP START TIME: {start_time}", flush=True)
+
         # this while loop handles looping over files
         while True:
 
-            if num_files_transfered == 0:
-                source_directory_size = int(
-                    float(clientfile.readline().strip().decode())
-                )
-                total_num_files = int(clientfile.readline().strip().decode())
-                start_time = time.time()
-                print(f"FIRST LOOP START TIME: {start_time}", flush=True)
+            path = None
 
             raw = clientfile.readline()
 
@@ -137,9 +136,12 @@ while True:
         print(f"current time: {current_time}", flush=True)
         print(f"time minus start time: {current_time-start_time}", flush=True)
 
-    dir_to_flag = "\\".join(path.split("\\")[:2])
-    print(dir_to_flag, flush=True)
-    os.rename(dir_to_flag, dir_to_flag + "__queue__")
+    if path is not None:
+        dir_to_flag = "\\".join(path.split("\\")[:2])
+        print(dir_to_flag, flush=True)
+        os.rename(dir_to_flag, dir_to_flag + "__queue__")
+    else:
+        print("The empty transfer someone requested was dutifully not carried out")
 
     # close the client socket
     client.close()

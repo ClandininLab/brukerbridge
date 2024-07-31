@@ -36,13 +36,13 @@ def tiff_to_nii(xml_file: str):
 
     # Get axis dims
     if (
-        root.find("Sequence").get("type") == "TSeries Timed Element"
+        root.find("Sequence").get("type") == "TSeries Timed Element"  # type: ignore
     ):  # Plane time series
         num_timepoints = len(sequences[0].findall("Frame"))
         num_z = 1
         isVolumeSeries = False
     elif (
-        root.find("Sequence").get("type") == "TSeries ZSeries Element"
+        root.find("Sequence").get("type") == "TSeries ZSeries Element"  # type: ignore
     ):  # Volume time series
         num_timepoints = len(sequences)
         num_z = len(sequences[0].findall("Frame"))
@@ -55,7 +55,7 @@ def tiff_to_nii(xml_file: str):
 
     num_channels = get_num_channels(sequences[0])
     test_file = sequences[0].findall("Frame")[0].findall("File")[0].get("filename")
-    fullfile = os.path.join(data_dir, test_file)
+    fullfile = os.path.join(data_dir, test_file)  # type: ignore
 
     ### Luke added try except 20221024 because sometimes but rarely a file doesn't exist
     # somthing to do with bruker xml file
@@ -85,7 +85,7 @@ def tiff_to_nii(xml_file: str):
             frames = [sequences[0].findall("Frame")[0]]
             files = frames[0].findall("File")
             filename = files[channel].get("filename")
-            fullfile = os.path.join(data_dir, filename)
+            fullfile = os.path.join(data_dir, filename)  # type: ignore
             img = io.imread(fullfile, plugin="pil")  # shape = t, y, x
             image_array[:, 0, :, :] = img
         else:
@@ -115,7 +115,7 @@ def tiff_to_nii(xml_file: str):
                 if isMultiPageTiff:
                     files = frames[0].findall("File")
                     filename = files[channel].get("filename")
-                    fullfile = os.path.join(data_dir, filename)
+                    fullfile = os.path.join(data_dir, filename)  # type: ignore
                     img = io.imread(fullfile, plugin="pil")  # shape = z, y, x
                     image_array[i, :, :, :] = img
                 else:
@@ -124,7 +124,7 @@ def tiff_to_nii(xml_file: str):
                         # For a given frame, get filename
                         files = frame.findall("File")
                         filename = files[channel].get("filename")
-                        fullfile = os.path.join(data_dir, filename)
+                        fullfile = os.path.join(data_dir, filename)  # type: ignore
 
                         # Read in file
                         img = io.imread(fullfile, plugin="pil")
@@ -149,11 +149,11 @@ def tiff_to_nii(xml_file: str):
         aff = np.eye(4)
         save_name = xml_file[:-4] + "_channel_{}".format(channel + 1) + ".nii"
         if isVolumeSeries:
-            img = nib.Nifti1Image(
+            img = nib.nifti1.Nifti1Image(
                 image_array, aff
             )  # 32 bit: maxes out at 32767 in any one dimension
         else:
-            img = nib.Nifti2Image(image_array, aff)  # 64 bit
+            img = nib.nifti2.Nifti2Image(image_array, aff)  # 64 bit
         image_array = None  # for memory
         logger.debug("%s, saving nii as %s", xml_file, save_name)
         img.to_filename(save_name)

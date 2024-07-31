@@ -32,8 +32,8 @@ def transfer_fictrac(user: str):
 
     for file in all_fictrac_files:
         if file[-4:] in allowable_extensions:
-            target_path = fictrac_target + "/" + file
-            source_path = fictrac_source + "/" + file
+            target_path = fictrac_target + "/" + file  # type: ignore
+            source_path = fictrac_source + "/" + file  # type: ignore
             if os.path.isfile(target_path):
                 pass
                 # print('File already exists. Skipping.  {}'.format(target_path))
@@ -43,11 +43,7 @@ def transfer_fictrac(user: str):
 
     # Send fictrac files to oak
     bridge.start_oak_transfer(
-        fictrac_target,
-        oak_target,
-        allowable_extensions=None,
-        add_to_build_que=False,
-        verbose=False,
+        fictrac_target, oak_target, allowable_extensions=None, add_to_build_que=False
     )
 
     print("Finished upload of fictrac files to oak.")

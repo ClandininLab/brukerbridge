@@ -50,6 +50,7 @@ def sec_to_hms(t):
 def print_progress_table(
     start_time, current_iteration, total_iterations, current_mem, total_mem, mode
 ):
+    print_iters = list()
     if mode == "server":
         print_iters = [
             1,
@@ -155,21 +156,20 @@ def progress_bar(iteration, total, length, fill="#"):
         total = 1
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + "-" * (length - filledLength)
-    fraction = f"{str(iteration):^4}" + "/" + f"{str(total):^4}"
     bar_string = f"{bar}"
     return bar_string
 
 
 def get_num_files(directory):
     num_files = 0
-    for path, dirs, files in os.walk(directory):
+    for _, _, files in os.walk(directory):
         num_files += len(files)
     return num_files
 
 
 def get_dir_size(directory):
     total_size = 0
-    for dirpath, dirnames, filenames in os.walk(directory):
+    for dirpath, _, filenames in os.walk(directory):
         for f in filenames:
             fp = os.path.join(dirpath, f)
             # skip if it is symbolic link
