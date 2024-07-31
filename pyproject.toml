@@ -11,6 +11,7 @@ authors = [
 
 ]
 readme = "README.md"
+# 3.8.10 is the last version of python that supports windows 7 and can reasonably be installed but you could run it on later versions too
 requires-python = ">=3.8"
 
 classifiers = [
@@ -32,3 +33,12 @@ Homepage = "https://github.com/ClandininLab/brukerbridge"
 
 [tool.isort]
 known_first_party=["brukerbridge"]
+
+[tool.pyright]
+include = ["brukerbridge"]
+
+pythonVersion = "3.8.10"
+pythonPlatform = "Windows"
+
+venvPath = "/Users/andrew/venvs"
+venv = "brukerbridge"
