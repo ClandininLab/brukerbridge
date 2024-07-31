@@ -10,7 +10,7 @@ import os
 import subprocess
 import threading
 import time
-from collections import deque
+from collections import defaultdict, deque
 from glob import glob
 from pathlib import Path
 from xml.etree import ElementTree
@@ -22,7 +22,7 @@ from brukerbridge.logging import (configure_logging, logger_thread,
                                   worker_process)
 from brukerbridge.transfer_fictrac import transfer_fictrac
 from brukerbridge.transfer_to_oak import start_oak_transfer
-from brukerbridge.utils import package_path, parse_malformed_json_bool
+from brukerbridge.utils import package_path, parse_malformed_json_bool, touch
 
 logger = logging.getLogger()
 
@@ -64,6 +64,9 @@ def main(root_dir=None):
     # acquisitions in any stage of processing
     in_process_acqs = set()
 
+    # acquisitions grouped by imaging session (one level up the org hierarchy)
+    in_process_sessions = defaultdict(set)
+
     # acq_path: Popen
     ripper_processes = dict()
     # acq_path: Future
@@ -88,8 +91,10 @@ def main(root_dir=None):
                 marked_acqs = find_marked_acquisitions(
                     root_dir or DEFAULT_ROOT_DIR, in_process_acqs
                 )
+                in_process_acqs.update(marked_acqs)
                 rip_queue.extend(marked_acqs)
                 for marked_acq in marked_acqs:
+                    in_process_sessions[marked_acq.parent].add(marked_acq)
                     logger.info("Queued %s for processing", format_acq_path(marked_acq))
 
                 # =================================================
@@ -122,7 +127,6 @@ def main(root_dir=None):
                         break
 
                     acq_path = rip_queue.popleft()
-                    in_process_acqs.add(acq_path)
 
                     # NOTE: on windows args is converted to a string anyways, no need to parse
                     # NOTE: double quotes on acq_path necessary to handle spaces.
@@ -276,6 +280,7 @@ def main(root_dir=None):
                 # ============ BOOKKEEPING ===========
                 # ====================================
 
+                # check for completed acquisitions
                 for acq_path in list(in_process_acqs):
                     user_name = acq_path.parent.parent.name
 
@@ -291,12 +296,26 @@ def main(root_dir=None):
                     if user_name in fictrac_io_futures:
                         continue
 
-                    # we're all done and can remove the __queue__ suffix
-                    os.rename(acq_path, acq_path.parent / acq_path_prefix(acq_path))
+                    # leave a sentinel to mark this acquisition as complete
+                    touch(acq_path / ".complete")
+                    logger.debug(
+                        "Wrote completion sentinel for %s", format_acq_path(acq_path)
+                    )
 
                     in_process_acqs.remove(acq_path)
 
-                    logger.info("All work complete for %s", format_acq_path(acq_path))
+                for session_path, acq_paths in list(in_process_sessions.items()):
+                    contains_sentinel = [
+                        (acq_path / ".complete").exists() for acq_path in acq_paths
+                    ]
+                    if all(contains_sentinel):
+                        assert not any(
+                            [acq_path in in_process_acqs for acq_path in acq_paths]
+                        )
+
+                        del in_process_sessions[session_path]
+
+                        logger.info("Completed session %s", session_path)
 
                 time.sleep(30)
     except Exception as unhandled_exception:
@@ -358,9 +377,15 @@ def find_marked_acquisitions(root_dir, in_process_acqs):
                 "Cannot process marked directory due to missing user config: %s",
                 marked_dir,
             )
+            continue
 
         for acq_path in marked_dir.iterdir():
             if acq_path in in_process_acqs:
+                continue
+
+            # acquisition has been marked as completed
+            if (acq_path / ".complete").exists():
+                logger.debug("Ignoring %s due to sentinel", format_acq_path(acq_path))
                 continue
 
             if contains_valid_xml(acq_path):

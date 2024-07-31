@@ -309,3 +309,8 @@ class Logger_stderr(object):
         # this handles the flush command by doing nothing.
         # you might want to specify some extra behavior here.
         pass
+
+
+def touch(fp):
+    with open(fp, "w+"):
+        pass

@@ -3,6 +3,8 @@ import os
 import time
 from shutil import copyfile
 
+from brukerbridge.utils import touch
+
 logger = logging.getLogger(__name__)
 
 
@@ -85,7 +87,7 @@ def start_oak_transfer(
         folder = os.path.split(directory_to)[-1]
         queue_file = os.path.join(oak_target, "build_queue", folder)
         try:
-            _touch(queue_file)
+            touch(queue_file)
         except FileNotFoundError:
             os.mkdir(os.path.join(oak_target, "build_queue"))
             logger.warning(
@@ -93,11 +95,6 @@ def start_oak_transfer(
                 os.path.join(oak_target, "build_queue"),
             )
 
-            _touch(queue_file)
+            touch(queue_file)
 
         logger.info("%s added to build queue", folder)
-
-
-def _touch(fp):
-    with open(fp, "w+"):
-        pass
