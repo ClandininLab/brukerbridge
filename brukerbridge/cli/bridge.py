@@ -314,7 +314,10 @@ def main(root_dir=None):
                         )
 
                         del in_process_sessions[session_path]
-
+                        os.rename(
+                            session_path,
+                            session_path.parent / session_prefix(session_path),
+                        )
                         logger.info("Completed session %s", session_path)
 
                 time.sleep(30)
@@ -447,7 +450,7 @@ def format_acq_path(acq_path):
     return f"{acq_path.parent.name}/{acq_path.name}"
 
 
-def acq_path_prefix(acq_path):
+def session_prefix(acq_path):
     if acq_path.name.endswith("__queue__"):
         return acq_path.name[:-9]
     elif acq_path.name.endswith("__lowqueue__"):
