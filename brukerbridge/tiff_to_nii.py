@@ -1,6 +1,5 @@
 import logging
 import os
-import time
 from xml.etree import ElementTree as ET
 
 import nibabel as nib
