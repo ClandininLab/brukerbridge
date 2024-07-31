@@ -13,6 +13,7 @@ import time
 from collections import defaultdict, deque
 from glob import glob
 from pathlib import Path
+from typing import Deque, Dict, List, Set
 from xml.etree import ElementTree
 
 from brukerbridge import (convert_tiff_collections_to_nii,
@@ -26,8 +27,6 @@ from brukerbridge.utils import package_path, parse_malformed_json_bool, touch
 
 logger = logging.getLogger()
 
-# can be overridden by argument to module main
-DEFAULT_ROOT_DIR = "H:/test-data"
 LOG_DIR = "C:/Users/User/logs"
 
 EXTENSION_WHITELIST = [
@@ -50,31 +49,32 @@ MAX_TIFF_WORKERS = 4
 MAX_OAK_WORKERS = 4
 
 
-def main(root_dir=None):
+# set default root dir in __main__.py,override as CLI arg
+def main(root_dir: str):
     configure_logging(LOG_DIR)
     log_queue = multiprocessing.Manager().Queue(-1)
     log_thread = threading.Thread(target=logger_thread, args=(log_queue,))
     log_thread.start()
 
-    rip_queue = deque()
-    tiff_queue = deque()
-    oak_io_queue = deque()
-    fictrac_io_queue = deque()
+    rip_queue: Deque[Path] = deque()
+    tiff_queue: Deque[Path] = deque()
+    oak_io_queue: Deque[Path] = deque()
+    fictrac_io_queue: Deque[Path] = deque()
 
     # acquisitions in any stage of processing
-    in_process_acqs = set()
+    in_process_acqs: Set[Path] = set()
 
     # acquisitions grouped by imaging session (one level up the org hierarchy)
-    in_process_sessions = defaultdict(set)
+    in_process_sessions: Dict[Path, Set[Path]] = defaultdict(set)
 
     # acq_path: Popen
-    ripper_processes = dict()
+    ripper_processes: Dict[Path, subprocess.Popen] = dict()
     # acq_path: Future
-    tiff_futures = dict()
+    tiff_futures: Dict[Path, concurrent.futures.Future] = dict()
     # acq_path: Future
-    oak_io_futures = dict()
+    oak_io_futures: Dict[Path, concurrent.futures.Future] = dict()
     # user: Future
-    fictrac_io_futures = dict()
+    fictrac_io_futures: Dict[str, concurrent.futures.Future] = dict()
 
     try:
         with concurrent.futures.ProcessPoolExecutor(
@@ -88,9 +88,7 @@ def main(root_dir=None):
                 # ============ LOOK FOR NEW ACQUISITIONS  ============
                 # ====================================================
 
-                marked_acqs = find_marked_acquisitions(
-                    root_dir or DEFAULT_ROOT_DIR, in_process_acqs
-                )
+                marked_acqs = find_marked_acquisitions(root_dir, in_process_acqs)
                 in_process_acqs.update(marked_acqs)
                 rip_queue.extend(marked_acqs)
                 for marked_acq in marked_acqs:
@@ -330,19 +328,19 @@ def main(root_dir=None):
         log_thread.join()
 
 
-def acq_config(acquisition_path):
+def acq_config(acquisition_path: Path) -> dict:
     """Look up the user config for this acquisition"""
     user_name = acquisition_path.parent.parent.name
     with open(f"{package_path()}/users/{user_name}.json", "r") as handle:
         return json.load(handle)
 
 
-def ripping_complete(acquisition_path):
+def ripping_complete(acquisition_path: Path) -> bool:
     """Checks whether raw data has been deleted, indicative of ripping halting"""
     return len(glob(f"{acquisition_path}/*_RAWDATA_*")) == 0
 
 
-def find_marked_acquisitions(root_dir, in_process_acqs):
+def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[Path]:
     """Searches for acquisitions under ROOT_DIR marked for processing
 
     A marked acquisition is a directory suffixed by '__queue__' or
@@ -356,6 +354,7 @@ def find_marked_acquisitions(root_dir, in_process_acqs):
     like Path('F:/user-name/date__queue__/TSeries_1')
 
     Args:
+      root_dir
       in_process_acqs: acquisitions which have already been queued and can be ignored - [Path]
 
     Returns:
@@ -397,7 +396,7 @@ def find_marked_acquisitions(root_dir, in_process_acqs):
     return marked_acquisitions
 
 
-def contains_valid_xml(acquisition_path):
+def contains_valid_xml(acquisition_path: Path) -> bool:
     """Checks that acquisition dir contains a parsable PVScan XML file made with the
     correct version of PrarieView.
     """
@@ -446,11 +445,11 @@ def contains_valid_xml(acquisition_path):
         return False
 
 
-def format_acq_path(acq_path):
+def format_acq_path(acq_path: Path) -> str:
     return f"{acq_path.parent.name}/{acq_path.name}"
 
 
-def session_prefix(acq_path):
+def session_prefix(acq_path: Path) -> str:
     if acq_path.name.endswith("__queue__"):
         return acq_path.name[:-9]
     elif acq_path.name.endswith("__lowqueue__"):

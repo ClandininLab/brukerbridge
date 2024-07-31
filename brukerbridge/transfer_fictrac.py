@@ -5,7 +5,7 @@ import ftputil
 import brukerbridge as bridge
 
 
-def transfer_fictrac(user):
+def transfer_fictrac(user: str):
 
     ip = "171.65.17.246"
     username = "clandininlab"

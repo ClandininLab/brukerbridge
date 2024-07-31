@@ -6,7 +6,7 @@ from xml.etree import ElementTree as ET
 import tifffile
 
 
-def convert_tiff_collections_to_stack(directory):
+def convert_tiff_collections_to_stack(directory: str):
     for item in os.listdir(directory):
         new_path = os.path.join(directory, item)
 

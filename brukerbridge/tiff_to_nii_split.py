@@ -10,7 +10,7 @@ from matplotlib.pyplot import imread
 logger = logging.getLogger(__name__)
 
 
-def tiff_to_nii(xml_file):
+def tiff_to_nii(xml_file: str):
     aborted = False
     data_dir, _ = os.path.split(xml_file)
 

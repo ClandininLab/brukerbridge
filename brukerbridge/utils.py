@@ -15,12 +15,12 @@ import numpy as np
 import brukerbridge
 
 
-def package_path():
+def package_path() -> Path:
     """Returns the absolute path to this package base directory"""
     return Path(inspect.getfile(brukerbridge)).parent.parent
 
 
-def parse_malformed_json_bool(field):
+def parse_malformed_json_bool(field) -> bool:
     """Parses 'boolean' values from a parsed json that might have been written
     accidentally as strings, as could happen if json was written manually.
     returns the intended value

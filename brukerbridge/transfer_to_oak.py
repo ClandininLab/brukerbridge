@@ -2,13 +2,16 @@ import logging
 import os
 import time
 from shutil import copyfile
+from typing import List
 
 from brukerbridge.utils import touch
 
 logger = logging.getLogger(__name__)
 
 
-def transfer_to_oak(source, target, allowable_extensions, transferred):
+def transfer_to_oak(
+    source: str, target: str, allowable_extensions: List[str], transferred: float
+):
     for item in os.listdir(source):
         source_path = source + "/" + item
         target_path = target + "/" + item

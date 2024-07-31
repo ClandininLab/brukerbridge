@@ -1,11 +1,13 @@
 import logging
 import logging.config
 import logging.handlers
+import multiprocessing
+from typing import Callable
 
 logger = logging.getLogger(__name__)
 
 
-def configure_logging(log_dir):
+def configure_logging(log_dir: str):
     """Three file handlers rotating once a day: INFO and above, DEBUG and above and ERROR
 
     DEBUG level messages emitted by PIL are filtered out as it is extremely chatty (emits MB of logs in short order)
@@ -72,7 +74,7 @@ class FilterDebug(logging.Filter):
         )
 
 
-def logger_thread(log_queue):
+def logger_thread(log_queue: multiprocessing.Manager.Queue):
     """Processes logs enqueued by QueueHandlers, presumably running in other processes"""
     logger.debug("Started logging thread")
     while True:
@@ -84,7 +86,7 @@ def logger_thread(log_queue):
         record_logger.handle(record)
 
 
-def worker_process(fn, log_queue, *args):
+def worker_process(fn: Callable, log_queue: multiprocessing.Manager.Queue, *args):
     """Logging initialization for concurrent workers"""
     qh = logging.handlers.QueueHandler(log_queue)
     root = logging.getLogger()
