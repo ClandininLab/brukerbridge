@@ -382,7 +382,13 @@ def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[
             continue
 
         for acq_path in marked_dir.iterdir():
+            # acq is already being processed
             if acq_path in in_process_acqs:
+                continue
+
+            # acq has failed once before and will be ignored
+            if acq_path.name.endswith("__error__"):
+                logger.debug("Ignoring %s", acq_path)
                 continue
 
             # acquisition has been marked as completed
@@ -392,6 +398,12 @@ def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[
 
             if contains_valid_xml(acq_path):
                 marked_acquisitions.append(acq_path)
+            else:
+                os.rename(acq_path, acq_path.parent / f"{acq_path.name}__error__")
+                logger.warning(
+                    "Error sentinel suffix appended to filename %s. No further attemps to process this acquisition will be made until the error sentinel is removed",
+                    format_acq_path(acq_path),
+                )
 
     return marked_acquisitions
 
