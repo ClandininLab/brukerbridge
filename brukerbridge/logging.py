@@ -18,7 +18,7 @@ def configure_logging(log_dir: str):
         "formatters": {
             "default": {
                 "class": "logging.Formatter",
-                "format": "%(asctime)s %(name)-35s %(levelname)-8s %(processName)-16s %(message)s",
+                "format": "%(asctime)s  %(levelname)-8s %(name)-35s %(processName)-16s %(message)s",
             }
         },
         "filters": {"filter_pil_debug": {"()": FilterDebug, "name": "PIL"}},
