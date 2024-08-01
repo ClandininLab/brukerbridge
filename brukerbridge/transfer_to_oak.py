@@ -78,7 +78,7 @@ def start_oak_transfer(
             directory_from,
             transferred,
             t_d,
-            1e-3 * transferred / t_d,
+            1e3 * transferred / t_d,
         )
     except ZeroDivisionError:
         logger.warning(

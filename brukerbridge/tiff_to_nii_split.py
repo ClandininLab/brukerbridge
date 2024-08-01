@@ -141,8 +141,9 @@ def create_nii_file(
                 if last_num_z is not None:
                     if current_num_z != last_num_z:
                         # detected by "Inconsistent number of z-slices"
-                        logger.info(
-                            "%s: this acquisition was aborted, discarding last volume"
+                        logger.warning(
+                            "%s: this acquisition was aborted, discarding last volume",
+                            xml_file,
                         )
                         aborted = True
                         break

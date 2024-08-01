@@ -111,17 +111,13 @@ def main(root_dir: str):
                         ripper_process.kill()
 
                         logger.info(
-                            "Killed completed ripper process for %s",
+                            "%s ripping complete, queued for tiff conversion",
                             format_acq_path(acq_path),
                         )
                         logger.debug("Ripper pid %s", ripper_process.pid)
                         del ripper_processes[acq_path]
 
                         tiff_queue.append(acq_path)
-                        logger.info(
-                            "%s added to tiff conversion queue",
-                            format_acq_path(acq_path),
-                        )
 
                 # start new rippers up to the limit
                 while len(ripper_processes) <= MAX_RIPPERS:
@@ -136,7 +132,7 @@ def main(root_dir: str):
                         f'{RIPPER_EXECUTABLE} -RipToInputDirectory -IncludeSubFolders -AddRawFileWithSubFolders "{acq_path}" -Convert -DeleteRaw'
                     )
 
-                    logger.info(
+                    logger.debug(
                         "Spawned ripper process for %s", format_acq_path(acq_path)
                     )
                     logger.debug("Ripper pid %s", ripper_processes[acq_path].pid)
@@ -172,7 +168,7 @@ def main(root_dir: str):
                         # more precisely, a process has been submitted to the
                         # queue and will be spawned when the executor has an
                         # idle worker slot
-                        logger.info(
+                        logger.debug(
                             "Spawned NIfTI conversion process for %s",
                             format_acq_path(acq_path),
                         )
@@ -184,7 +180,7 @@ def main(root_dir: str):
                             str(acq_path),
                         )
 
-                        logger.info(
+                        logger.debug(
                             "Spawned tiff conversion process for %s",
                             format_acq_path(acq_path),
                         )
@@ -205,7 +201,7 @@ def main(root_dir: str):
                         fictrac_io_queue.append(acq_path)
 
                         logger.info(
-                            "%s tiff conversion complete, queued for oak upload",
+                            "%s tiff conversion complete, queued for io",
                             format_acq_path(acq_path),
                         )
 
@@ -230,7 +226,7 @@ def main(root_dir: str):
                         ),
                     )
 
-                    logger.info(
+                    logger.debug(
                         "Spawned oak upload process for %s", format_acq_path(acq_path)
                     )
 
@@ -238,8 +234,6 @@ def main(root_dir: str):
                     if oak_io_future.done():
                         oak_io_future.result()
                         del oak_io_futures[acq_path]
-
-                        logger.info("%s oak upload complete", format_acq_path(acq_path))
 
                 # ====================================
                 # ============ FICTRAC IO ============
@@ -271,7 +265,7 @@ def main(root_dir: str):
                         fictrac_io_futures[user_name] = io_executor.submit(
                             worker_process, transfer_fictrac, log_queue, user_name
                         )
-                        logger.info(
+                        logger.debug(
                             "Spawned fictrac io process for %s",
                             format_acq_path(acq_path),
                         )
@@ -451,15 +445,17 @@ def contains_valid_xml(acquisition_path: Path) -> bool:
                 return True
 
         except ElementTree.ParseError:
-            logger.exception(
+            logger.debug(
                 "Unparseable XML file %s in acquisition %s",
                 Path(xml_file).name,
                 acquisition_path,
+                exc_info=True,
             )
         except (KeyError, AssertionError):
-            logger.exception(
+            logger.debug(
                 "XML %s does not have the expected structure. Are you sure you've got the right files?",
                 xml_file,
+                exc_info=True,
             )
     else:
         logger.error(
@@ -470,7 +466,8 @@ def contains_valid_xml(acquisition_path: Path) -> bool:
 
 
 def format_acq_path(acq_path: Path) -> str:
-    return f"{acq_path.parent.name}/{acq_path.name}"
+    user_name = acq_path.parent.parent.name
+    return f"{user_name}: {acq_path.parent.name}/{acq_path.name}"
 
 
 def session_prefix(acq_path: Path) -> str:

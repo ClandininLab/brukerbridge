@@ -98,7 +98,7 @@ def tiff_to_nii(xml_file: str):
                     if last_num_z is not None:
                         if current_num_z != last_num_z:
                             # detected by "Inconsistent number of z-slices"
-                            logger.info(
+                            logger.warning(
                                 "%s: this acquisition was aborted, discarding last volume",
                                 xml_file,
                             )
