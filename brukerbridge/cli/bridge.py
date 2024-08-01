@@ -223,7 +223,7 @@ def main(root_dir: str):
                         start_oak_transfer,
                         log_queue,
                         str(acq_path),
-                        str(Path(config["oak_target"]).parent),
+                        str(Path(config["oak_target"])),
                         EXTENSION_WHITELIST,
                         parse_malformed_json_bool(
                             config.get("add_to_build_que", False)
