@@ -14,6 +14,7 @@ def configure_logging(log_dir: str):
     """
     logging_config = {
         "version": 1,
+        "disable_existing_loggers": False,
         "formatters": {
             "default": {
                 "class": "logging.Formatter",
