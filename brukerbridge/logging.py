@@ -1,7 +1,7 @@
 import logging
 import logging.config
 import logging.handlers
-import multiprocessing
+from queue import Queue
 from typing import Callable
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class FilterDebug(logging.Filter):
         )
 
 
-def logger_thread(log_queue: multiprocessing.Manager.Queue):
+def logger_thread(log_queue: Queue):
     """Processes logs enqueued by QueueHandlers, presumably running in other processes"""
     logger.debug("Started logging thread")
     while True:
@@ -86,7 +86,7 @@ def logger_thread(log_queue: multiprocessing.Manager.Queue):
         record_logger.handle(record)
 
 
-def worker_process(fn: Callable, log_queue: multiprocessing.Manager.Queue, *args):
+def worker_process(fn: Callable, log_queue: Queue, *args):
     """Logging initialization for concurrent workers"""
     qh = logging.handlers.QueueHandler(log_queue)
     root = logging.getLogger()
