@@ -88,6 +88,8 @@ def main(root_dir: str):
                 # ============ LOOK FOR NEW ACQUISITIONS  ============
                 # ====================================================
 
+                logger = logging.getLogger("brukerbridge.main.enqueue")
+
                 marked_acqs = find_marked_acquisitions(root_dir, in_process_acqs)
                 in_process_acqs.update(marked_acqs)
                 rip_queue.extend(marked_acqs)
@@ -98,6 +100,8 @@ def main(root_dir: str):
                 # =================================================
                 # ============ MANAGE RIPPER PROCESSES ============
                 # =================================================
+
+                logger = logging.getLogger("brukerbridge.main.ripper_management")
 
                 # kill any rippers that have finished
                 for acq_path, ripper_process in list(ripper_processes.items()):
@@ -140,6 +144,8 @@ def main(root_dir: str):
                 # =======================================
                 # ============ CONVERT TIFFS ============
                 # =======================================
+
+                logger = logging.getLogger("brukerbridge.main.conversion_management")
 
                 # submit conversion futures
                 while len(tiff_queue) > 0:
@@ -207,6 +213,8 @@ def main(root_dir: str):
                 # ============ UPLOAD TO OAK ============
                 # =======================================
 
+                logger = logging.getLogger("brukerbridge.main.io.oak")
+
                 while len(oak_io_queue) > 0:
                     acq_path = oak_io_queue.popleft()
                     config = acq_config(acq_path)
@@ -236,6 +244,8 @@ def main(root_dir: str):
                 # ====================================
                 # ============ FICTRAC IO ============
                 # ====================================
+
+                logger = logging.getLogger("brukerbridge.main.io.fictrac")
 
                 # NOTE: it's unclear whether this is actively in use as only a
                 # few people have the transfer_fictrac setting enabled in their
@@ -277,6 +287,8 @@ def main(root_dir: str):
                 # ====================================
                 # ============ BOOKKEEPING ===========
                 # ====================================
+
+                logger = logging.getLogger("brukerbridge.main.bookkeeping")
 
                 # check for completed acquisitions
                 for acq_path in list(in_process_acqs):
@@ -320,7 +332,7 @@ def main(root_dir: str):
 
                 time.sleep(30)
     except Exception as unhandled_exception:
-        logger.critical("Fatal exception", exc_info=True)
+        logger.critical("Fatal exception", exc_info=True)  # type: ignore
         raise unhandled_exception
     finally:
         # flush log queue before exiting
@@ -401,7 +413,7 @@ def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[
             else:
                 os.rename(acq_path, acq_path.parent / f"{acq_path.name}__error__")
                 logger.warning(
-                    "Error sentinel suffix appended to filename %s. No further attemps to process this acquisition will be made until the error sentinel is removed",
+                    "Error sentinel suffix appended to filename %s. No further attempts to process this acquisition will be made until the error sentinel is removed",
                     format_acq_path(acq_path),
                 )
 
