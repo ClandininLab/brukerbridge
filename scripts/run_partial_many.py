@@ -14,6 +14,7 @@ extensions_for_oak_transfer = ['.nii', '.csv', '.xml', 'json', 'hdf5', 'tiff', '
 #full_target = 'H:/Arnaldo/20221011_elavGAL4_3rd_UAS-G6smlsTdtom_2nd_test_run'
 #full_target = 'H:/Avery/20230302/'
 
+
 ### Oak target ###
 #oak_target = 'X:/data/Brezovec/2P_Imaging/imports'
 # oak_target = 'X:/data/Ashley2/imports'
@@ -30,10 +31,11 @@ oak_target = 'X:/data/Jacob/ImagingData/Bruker/imports'
 
 
 
-dates = ['20230814', "20230815", "20230816", "20230825", "2030829"]
+dates = ['20230814', "20230815", "20230816", "20230825", "20230829"]
 
 for date in dates:
 	#full_target = 'H:/Ashley/' + str(date)
+	full_target = 'H:/Jacob/' + str(date)
 
 	### raw to tiff ###
 	#bridge.convert_raw_to_tiff(full_target)

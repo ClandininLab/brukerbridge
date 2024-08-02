@@ -30,9 +30,11 @@ def get_queued_folder():
 	regular_dir_fullpaths = [x for x in candidate_dir_fullpaths if x.endswith('__queue__')]
 	low_priority_dir_fullpaths = [x for x in candidate_dir_fullpaths if x.endswith('__lowqueue__')]
 
-	print('Candidate imaging data directories:')
-	for cdfp in high_priority_dir_fullpaths + regular_dir_fullpaths + low_priority_dir_fullpaths:
-		print(f'  {cdfp}')
+	all_candidates = high_priority_dir_fullpaths + regular_dir_fullpaths + low_priority_dir_fullpaths
+	if len(all_candidates) > 0:
+		print('Candidate imaging data directories:')
+		for cdfp in high_priority_dir_fullpaths + regular_dir_fullpaths + low_priority_dir_fullpaths:
+			print(f'  {cdfp}')
 
 	if len(high_priority_dir_fullpaths) > 0:
 		# Get the earliest date directory among the high_priority_dir_fullpaths

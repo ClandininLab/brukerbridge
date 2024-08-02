@@ -8,13 +8,13 @@ import brukerbridge as bridge
 def transfer_fictrac(user):
 
     ip ='171.65.17.246'
-    username = 'clandininlab'
-    passwd = 'jointhelab@'
+    username = 'clandinin'
+    passwd = 'jointhelab1'
     fictrac_target = 'H:/fictrac/{}'.format(user)
     #fictrac_source = 'fictrac_data/{}'.format(user)
     #fictrac_source = 'fictrac_data'
     #fictrac_source = 'luke_data'
-    fictrac_source = '../../data/luke_data'
+    fictrac_source = '/home/clandinin/data/luke'
     allowable_extensions = ['.log', '.avi', '.dat', '.txt']
     oak_target = 'X:/data/fictrac'
 

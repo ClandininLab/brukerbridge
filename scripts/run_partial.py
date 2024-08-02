@@ -4,15 +4,17 @@ extensions_for_oak_transfer = ['.nii', '.csv', '.xml', 'json', 'hdf5', 'tiff', '
 
 ### Directory on this computer to process ###
 # full_target = 'H:/Ashley/20230405'
-# full_target = 'G:/Max/20220301'
+#full_target = 'H:/Max/20230915__queue__'
 #full_target = 'H:/Michelle/220427'
 #full_target = 'H:/Tim/20230329a'
 # full_target = 'H:/luke/20230303__error__'
 # full_target = 'H:/Minseung/visualattention'
 #full_target = 'H:/Emma/20221006__queue__'
-#full_target = 'H:/Alex/230721'
-full_target = 'H:/Arnaldo/20230715_elavg4-ujrgeco1a_capaexa-lg6S__error__/20230715_elavg4-ujrgeco1a_capaexa-lg6s-005'
+full_target = 'H:/Alex/240520'
+#full_target = 'H:/Arnaldo/20230715_elavg4-ujrgeco1a_capaexa-lg6S__error__/20230715_elavg4-ujrgeco1a_capaexa-lg6s-005'
+# full_target = 'H:/Jacob/20230829'
 #full_target = 'H:/Avery/20230522'
+#full_target = 'H:/David/20231207__queue__'
 
 ### Oak target ###
 #oak_target = 'X:/data/Brezovec/2P_Imaging/imports'
@@ -24,16 +26,19 @@ full_target = 'H:/Arnaldo/20230715_elavg4-ujrgeco1a_capaexa-lg6S__error__/202307
 #oak_target = 'X:/data/Tim/ImagingData/imports'
 # oak_target = 'X:/data/Brezovec/2P_Imaging/imports'
 # oak_target = 'X:/data/minseung/bruker_data/imports'
-#oak_target = 'X:/data/Yukun/2P_Imaging/imports'
-oak_target = 'X:/data/Arnaldo/2P_Imaging/imports'
+oak_target = 'X:/data/Yukun/2P_Imaging/imports'
+#oak_target = 'X:/data/Arnaldo/2P_Imaging/imports'
+#oak_target = 'X:/data/Jacob/ImagingData/Bruker/imports'
+#oak_target = 'X:/data/Max/ImagingData/Bruker/imports'
 #oak_target = 'D:/tmp/'
+#oak_target = 'X:/data/David/Bruker/imports'
 
 ### raw to tiff ###
 #bridge.convert_raw_to_tiff(full_target)
 
 
 ### tiffs to nii or tiff stack ###
-bridge.convert_tiff_collections_to_nii(full_target)
+#bridge.convert_tiff_collections_to_nii(full_target)
 #bridge.convert_tiff_collections_to_nii_split(full_target)
 #bridge.convert_tiff_collections_to_stack(full_target)
 
