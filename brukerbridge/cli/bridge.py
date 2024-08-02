@@ -324,7 +324,8 @@ def main(root_dir: str):
                                 session_path,
                                 session_path.parent / session_prefix(session_path),
                             )
-                        except FileExistsError:
+                        # windows evidently sometimes throws a permissions error when the file already exists. bill gates is the world's greatest con man
+                        except (FileExistsError, PermissionError):
                             target_path = session_path.parent / session_prefix(
                                 session_path
                             )
