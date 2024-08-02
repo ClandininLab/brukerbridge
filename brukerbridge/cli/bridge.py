@@ -319,10 +319,34 @@ def main(root_dir: str):
                         )
 
                         del in_process_sessions[session_path]
-                        os.rename(
-                            session_path,
-                            session_path.parent / session_prefix(session_path),
-                        )
+                        try:
+                            os.rename(
+                                session_path,
+                                session_path.parent / session_prefix(session_path),
+                            )
+                        except FileExistsError:
+                            target_path = session_path.parent / session_prefix(
+                                session_path
+                            )
+
+                            # find a unique suffix
+                            suffix = 2
+                            while True:
+                                if not target_path.with_suffix(f"_{suffix}").exists():
+                                    break
+
+                                suffix += 1
+
+                            sub_target_path = target_path.with_suffix(f"_{suffix}")
+                            os.rename(session_path, sub_target_path)
+
+                            logger.error(
+                                "%s could not be renamed to %s because that directory already exists. It has been renamed to %s",
+                                session_path,
+                                target_path,
+                                sub_target_path,
+                            )
+
                         logger.info("Completed session %s", session_path)
 
                 time.sleep(30)
