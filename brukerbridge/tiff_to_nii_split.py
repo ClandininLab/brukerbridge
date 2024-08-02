@@ -230,11 +230,15 @@ def convert_tiff_collections_to_nii_split(directory):
                     # This is useful if rebooting the pipeline due to some error, and
                     # not wanting to take the time to re-create the already made niis
 
-                    ##commenting this out for now 20210702
-                    # for item in os.listdir(directory):
-                    #     if item.endswith('.nii'):
-                    #         print('skipping nii containing folder: {}'.format(directory))
-                    #         break
-                    # else:
-                    #     tiff_to_nii(new_path)
-                    tiff_to_nii(new_path)
+                    # NOTE: berger 2024/8/1 this was commented out for unknown
+                    # reason by bella on 2021/07/02. I don't see any reason not
+                    # to reenable it
+                    for item in os.listdir(directory):
+                        if item.endswith(".nii"):
+                            logger.warning(
+                                "skipping nii containing folder (nilpotency): %s",
+                                directory,
+                            )
+                            break
+                    else:
+                        tiff_to_nii(new_path)

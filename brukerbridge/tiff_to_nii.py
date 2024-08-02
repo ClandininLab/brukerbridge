@@ -194,7 +194,7 @@ def convert_tiff_collections_to_nii(directory):
                     # not wanting to take the time to re-create the already made niis
                     for item in os.listdir(directory):
                         if item.endswith(".nii"):
-                            logger.info(
+                            logger.warning(
                                 "skipping nii containing folder (nilpotency): %s",
                                 directory,
                             )
