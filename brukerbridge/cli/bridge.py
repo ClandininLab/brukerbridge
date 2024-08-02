@@ -23,7 +23,8 @@ from brukerbridge.logging import (configure_logging, logger_thread,
                                   worker_process)
 from brukerbridge.transfer_fictrac import transfer_fictrac
 from brukerbridge.transfer_to_oak import start_oak_transfer
-from brukerbridge.utils import package_path, parse_malformed_json_bool, touch
+from brukerbridge.utils import (format_acq_path, package_path,
+                                parse_malformed_json_bool, touch)
 
 logger = logging.getLogger()
 
@@ -463,11 +464,6 @@ def contains_valid_xml(acquisition_path: Path) -> bool:
             acquisition_path,
         )
         return False
-
-
-def format_acq_path(acq_path: Path) -> str:
-    user_name = acq_path.parent.parent.name
-    return f"{user_name}: {acq_path.parent.name}/{acq_path.name}"
 
 
 def session_prefix(acq_path: Path) -> str:

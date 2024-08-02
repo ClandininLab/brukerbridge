@@ -5,7 +5,7 @@ from pathlib import Path
 from shutil import copyfile
 from typing import List, Optional
 
-from brukerbridge.utils import touch
+from brukerbridge.utils import format_acq_path, get_dir_size, touch
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,9 @@ def transfer_to_oak(
                         rate,
                     )
                 except ZeroDivisionError:
-                    pass
+                    logger.error(
+                        "Spacetime is broken or this is now the fastest computer in history"
+                    )
 
     return transferred
 
@@ -75,24 +77,38 @@ def start_oak_transfer(
 
     target_path.mkdir(parents=True, exist_ok=True)
 
+    acq_size_gb = get_dir_size(acq_path)
+
     start_time = time.time()
-    transferred = transfer_to_oak(
+    transferred_gb = transfer_to_oak(
         str(acq_path), str(target_path), allowable_extensions, 0
     )
     t_d = time.time() - start_time
 
     try:
-        logger.info(
-            "%s upload complete. Transferred %.1fGB in %.fs (%.1f MB/s)",
-            acq_path,
-            transferred,
-            t_d,
-            1e3 * transferred / t_d,
-        )
+        if transferred_gb <= acq_size_gb:
+            logger.warning(
+                "%s is %.1fGB but only %.1fGB was uploaded (%.1f MB/s). This means that existing files of the same name were already on oak.",
+                format_acq_path(acq_path),
+                acq_size_gb,
+                transferred_gb,
+                1e3 * transferred_gb / t_d,
+            )
+        elif transferred_gb > acq_size_gb:
+            logger.error(
+                "%s is %f GB but %f GB was uploaded. Best case scenario: get_dir_size is bugged"
+            )
+        else:
+            logger.info(
+                "%s upload complete. Transferred %.1fGB in %.fs (%.1f MB/s)",
+                format_acq_path(acq_path),
+                transferred_gb,
+                t_d,
+                1e3 * transferred_gb / t_d,
+            )
     except ZeroDivisionError:
-        logger.warning(
-            "%s upload: no files transferred, remote already up to date",
-            acq_path,
+        logger.error(
+            "Spacetime is broken or this is now the fastest computer in history"
         )
 
     if add_to_build_que:

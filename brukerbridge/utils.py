@@ -168,6 +168,7 @@ def get_num_files(directory):
 
 
 def get_dir_size(directory):
+    """recursive dir size"""
     total_size = 0
     for dirpath, _, filenames in os.walk(directory):
         for f in filenames:
@@ -314,3 +315,8 @@ class Logger_stderr(object):
 def touch(fp):
     with open(fp, "w+"):
         pass
+
+
+def format_acq_path(acq_path: Path) -> str:
+    user_name = acq_path.parent.parent.name
+    return f"{user_name}: {acq_path.parent.name}/{acq_path.name}"
