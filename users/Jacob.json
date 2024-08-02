@@ -1,5 +1,5 @@
 {
-    "oak_target": "X:/data/Jacob/ImagingData/Bruker/imports",
+    "oak_target": "X:/data/Jacob/Bruker/imports",
     "convert_to": "nii",
     "email": "jcsimon@stanford.edu",
     "add_to_build_que": "False",
