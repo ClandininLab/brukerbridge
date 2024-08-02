@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import ftputil
 
@@ -43,7 +44,10 @@ def transfer_fictrac(user: str):
 
     # Send fictrac files to oak
     bridge.start_oak_transfer(
-        fictrac_target, oak_target, allowable_extensions=None, add_to_build_que=False
+        Path(fictrac_target),
+        Path(oak_target),
+        allowable_extensions=None,
+        add_to_build_que=False,
     )
 
     print("Finished upload of fictrac files to oak.")

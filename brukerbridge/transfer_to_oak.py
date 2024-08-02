@@ -1,8 +1,9 @@
 import logging
 import os
 import time
+from pathlib import Path
 from shutil import copyfile
-from typing import List
+from typing import List, Optional
 
 from brukerbridge.utils import touch
 
@@ -10,7 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 def transfer_to_oak(
-    source: str, target: str, allowable_extensions: List[str], transferred: float
+    source: str,
+    target: str,
+    allowable_extensions: Optional[List[str]],
+    transferred: float,
 ):
     for item in os.listdir(source):
         source_path = source + "/" + item
@@ -60,22 +64,27 @@ def transfer_to_oak(
 
 
 def start_oak_transfer(
-    directory_from, oak_target, allowable_extensions, add_to_build_que
+    acq_path: Path,
+    oak_target: Path,
+    allowable_extensions: Optional[List[str]],
+    add_to_build_que: bool,
 ):
-    directory_to = os.path.join(oak_target, os.path.split(directory_from)[-1])
-    try:
-        os.mkdir(directory_to)
-    except FileExistsError:
-        logger.debug("%s already exists", directory_to)
+    sess_relative_acq_path = acq_path.relative_to(acq_path.parent.parent)
+    target_path = oak_target / sess_relative_acq_path
+    logger.debug("target path: %s", target_path)
+
+    target_path.mkdir(parents=True, exist_ok=True)
 
     start_time = time.time()
-    transferred = transfer_to_oak(directory_from, directory_to, allowable_extensions, 0)
+    transferred = transfer_to_oak(
+        str(acq_path), str(target_path), allowable_extensions, 0
+    )
     t_d = time.time() - start_time
 
     try:
         logger.info(
             "%s upload complete. Transferred %.1fGB in %.fs (%.1f MB/s)",
-            directory_from,
+            acq_path,
             transferred,
             t_d,
             1e3 * transferred / t_d,
@@ -83,21 +92,21 @@ def start_oak_transfer(
     except ZeroDivisionError:
         logger.warning(
             "%s upload: no files transferred, remote already up to date",
-            directory_from,
+            acq_path,
         )
 
     if add_to_build_que:
-        folder = os.path.split(directory_to)[-1]
-        queue_file = os.path.join(oak_target, "build_queue", folder)
+        sess_name = acq_path.parent.name
+        queue_sentinel_path = oak_target / "build_queue" / sess_name
         try:
-            touch(queue_file)
+            touch(queue_sentinel_path)
         except FileNotFoundError:
-            os.mkdir(os.path.join(oak_target, "build_queue"))
+            (oak_target / "build_queue").mkdir()
+            touch(queue_sentinel_path)
+
             logger.warning(
                 "Created missing build_queue dir: %s. You should review its permissions",
                 os.path.join(oak_target, "build_queue"),
             )
 
-            touch(queue_file)
-
-        logger.info("%s added to build queue", folder)
+        logger.info("Wrote build queue sentinel for %s", sess_name)
