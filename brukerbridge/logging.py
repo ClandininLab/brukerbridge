@@ -92,6 +92,12 @@ def worker_process(fn: Callable, log_queue: Queue, *args):
     qh = logging.handlers.QueueHandler(log_queue)
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
-    root.addHandler(qh)
+
+    # workers are not shut down between tasks, so if we don't check for
+    # existing handlers each root logger will accumulate and more copies of the
+    # QueueHandler and emit more and more copies of each log
+    if not root.handlers:
+        root.addHandler(qh)
+
     logger.debug("Executing %s with args %s", fn.__name__, args)
     fn(*args)
