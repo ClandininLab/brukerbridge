@@ -1,5 +1,5 @@
 {
-    "oak_target": "X:/data/minseung/bruker_data/imports",
+    "oak_target": "X:/data/minseung/ImagingData/Bruker/imports",
     "convert_to": "nii",
     "email": "minseung@stanford.edu",
     "add_to_build_que": "False"
