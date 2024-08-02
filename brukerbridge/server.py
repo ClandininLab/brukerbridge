@@ -9,7 +9,7 @@ verbose = False
 CHUNKSIZE = 1_000_000
 SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 5001
-target_directory = "H:/"
+target_directory = "D:/"
 
 ####
 # SERVER_HOST = ""
