@@ -77,7 +77,7 @@ def start_oak_transfer(
 
     target_path.mkdir(parents=True, exist_ok=True)
 
-    acq_size_gb = get_dir_size(acq_path)
+    acq_size_gb = get_dir_size(acq_path, suffix_whitelist=allowable_extensions)
 
     start_time = time.time()
     transferred_gb = transfer_to_oak(

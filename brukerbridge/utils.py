@@ -167,7 +167,7 @@ def get_num_files(directory):
     return num_files
 
 
-def get_dir_size(directory):
+def get_dir_size(directory, suffix_whitelist=None):
     """recursive dir size"""
     total_size = 0
     for dirpath, _, filenames in os.walk(directory):
@@ -175,6 +175,11 @@ def get_dir_size(directory):
             fp = os.path.join(dirpath, f)
             # skip if it is symbolic link
             if not os.path.islink(fp):
+                if suffix_whitelist is not None:
+                    whitelisted = [fp.endswith(suffix) for suffix in suffix_whitelist]
+                    if not any(whitelisted):
+                        continue
+
                 total_size += os.path.getsize(fp)
     return total_size * 10**-9  # report in GB
 
