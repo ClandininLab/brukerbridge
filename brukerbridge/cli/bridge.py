@@ -194,8 +194,15 @@ def main(root_dir: str):
                 # queue completed conversions for io
                 for acq_path, tiff_future in list(tiff_futures.items()):
                     if tiff_future.done():
-                        # raise possible remote exception
-                        tiff_future.result()
+                        try:
+                            # raise possible remote exception
+                            tiff_future.result()
+                        except:
+                            logger.critical(
+                                "Fatal exception raised from %s conversion worker",
+                                format_acq_path(acq_path),
+                            )
+                            raise
 
                         del tiff_futures[acq_path]
                         oak_io_queue.append(acq_path)
@@ -233,7 +240,16 @@ def main(root_dir: str):
 
                 for acq_path, oak_io_future in list(oak_io_futures.items()):
                     if oak_io_future.done():
-                        oak_io_future.result()
+                        try:
+                            # raise possible remote exception
+                            oak_io_future.result()
+                        except:
+                            logger.critical(
+                                "Fatal exception raised from %s oak io worker",
+                                format_acq_path(acq_path),
+                            )
+                            raise
+
                         del oak_io_futures[acq_path]
 
                 # ====================================
@@ -273,6 +289,16 @@ def main(root_dir: str):
 
                 for user_name, fictrac_io_future in list(fictrac_io_futures.items()):
                     if fictrac_io_future.done():
+                        try:
+                            # raise possible remote exception
+                            fictrac_io_future.result()
+                        except:
+                            logger.critical(
+                                "Fatal exception raised from %s fictrac io worker",
+                                user_name,
+                            )
+                            raise
+
                         fictrac_io_future.result()
 
                         del fictrac_io_futures[user_name]
