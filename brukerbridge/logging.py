@@ -1,6 +1,7 @@
 import logging
 import logging.config
 import logging.handlers
+import os
 from queue import Queue
 from typing import Callable
 
@@ -99,5 +100,7 @@ def worker_process(fn: Callable, log_queue: Queue, *args):
     if not root.handlers:
         root.addHandler(qh)
 
-    logger.debug("Executing %s with args %s", fn.__name__, args)
+    logger.debug(
+        "Executing %s from PID %s with args %s", fn.__name__, os.getpid(), args
+    )
     fn(*args)
