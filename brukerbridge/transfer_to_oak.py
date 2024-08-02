@@ -96,7 +96,10 @@ def start_oak_transfer(
             )
         elif transferred_gb > acq_size_gb:
             logger.error(
-                "%s is %f GB but %f GB was uploaded. Best case scenario: get_dir_size is bugged"
+                "%s is %f GB but %f GB was uploaded. Best case scenario: get_dir_size is bugged",
+                format_acq_path(acq_path),
+                acq_size_gb,
+                transferred_gb,
             )
         else:
             logger.info(
