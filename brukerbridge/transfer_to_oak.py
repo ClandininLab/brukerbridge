@@ -99,14 +99,15 @@ def start_oak_transfer(
         sess_name = acq_path.parent.name
         queue_sentinel_path = oak_target / "build_queue" / sess_name
         try:
-            touch(queue_sentinel_path)
+            if not queue_sentinel_path.exists():
+                touch(queue_sentinel_path)
+                logger.info("Wrote build queue sentinel for %s", sess_name)
         except FileNotFoundError:
             (oak_target / "build_queue").mkdir()
-            touch(queue_sentinel_path)
-
             logger.warning(
                 "Created missing build_queue dir: %s. You should review its permissions",
                 os.path.join(oak_target, "build_queue"),
             )
 
-        logger.info("Wrote build queue sentinel for %s", sess_name)
+            touch(queue_sentinel_path)
+            logger.info("Wrote build queue sentinel for %s", sess_name)
