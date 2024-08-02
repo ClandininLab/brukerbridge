@@ -332,12 +332,12 @@ def main(root_dir: str):
                             # find a unique suffix
                             suffix = 2
                             while True:
-                                if not target_path.with_suffix(f"_{suffix}").exists():
+                                if not target_path.with_suffix(f".{suffix}").exists():
                                     break
 
                                 suffix += 1
 
-                            sub_target_path = target_path.with_suffix(f"_{suffix}")
+                            sub_target_path = target_path.with_suffix(f".{suffix}")
                             os.rename(session_path, sub_target_path)
 
                             logger.error(
