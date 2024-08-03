@@ -52,10 +52,16 @@ MAX_OAK_WORKERS = 4
 
 # set default root dir in __main__.py,override as CLI arg
 def main(root_dir: str):
+    LOCKFILE = Path(root_dir) / ".lockfile"
+
     configure_logging(LOG_DIR)
     log_queue = multiprocessing.Manager().Queue(-1)
     log_thread = threading.Thread(target=logger_thread, args=(log_queue,))
     log_thread.start()
+    logger = logging.getLogger("brukerbridge.main")
+    logger.info("Started bridge process")
+
+    acquire_lock(LOCKFILE)
 
     rip_queue: Deque[Path] = deque()
     tiff_queue: Deque[Path] = deque()
@@ -83,6 +89,7 @@ def main(root_dir: str):
         ) as tiff_executor, concurrent.futures.ProcessPoolExecutor(
             max_workers=MAX_OAK_WORKERS
         ) as io_executor:
+
             while True:
 
                 # ====================================================
@@ -375,6 +382,8 @@ def main(root_dir: str):
         log_queue.put(None)  # type: ignore
         log_thread.join()  # type: ignore
 
+        release_lock(LOCKFILE)
+
 
 def acq_config(acquisition_path: Path) -> dict:
     """Look up the user config for this acquisition"""
@@ -591,3 +600,24 @@ def handle_fatal(
                 last_emitted = time.time()
         else:
             break
+
+
+def acquire_lock(lockfile: Path):
+    """Attempt to acquire lock"""
+    if lockfile.exists():
+        logger.critical(
+            (
+                "Could not acquire lock. This probably means there is another instance of the bridge process running. "
+                "If you are absolutely sure there isn't you can manually delete the lockfile %s"
+            ),
+            lockfile,
+        )
+        raise RuntimeError("Could not acquire lock.")
+    else:
+        touch(lockfile)
+        logger.debug("Acquired %s", lockfile)
+
+
+def release_lock(lockfile: Path):
+    lockfile.unlink()
+    logger.debug("Release %s", lockfile)
