@@ -182,22 +182,22 @@ def convert_tiff_collections_to_nii(directory):
 
         # If the item is a file
         else:
-            # If the item is an xml file
-            if ".xml" in item:
-                tree = ET.parse(new_path)
-                root = tree.getroot()
-                # If the item is an xml file with scan info
-                if root.tag == "PVScan":
+            assert item.endswith(".xml")
 
-                    # Also, verify that this folder doesn't already contain any .niis
-                    # This is useful if rebooting the pipeline due to some error, and
-                    # not wanting to take the time to re-create the already made niis
-                    for item in os.listdir(directory):
-                        if item.endswith(".nii"):
-                            logger.warning(
-                                "skipping nii containing folder (nilpotency): %s",
-                                directory,
-                            )
-                            break
-                    else:
-                        tiff_to_nii(new_path)
+            tree = ET.parse(new_path)
+            root = tree.getroot()
+            # If the item is an xml file with scan info
+            if root.tag == "PVScan":
+
+                # Also, verify that this folder doesn't already contain any .niis
+                # This is useful if rebooting the pipeline due to some error, and
+                # not wanting to take the time to re-create the already made niis
+                for item in os.listdir(directory):
+                    if item.endswith(".nii"):
+                        logger.warning(
+                            "skipping nii containing folder (nilpotency): %s",
+                            directory,
+                        )
+                        break
+                else:
+                    tiff_to_nii(new_path)
