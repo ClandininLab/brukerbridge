@@ -1,18 +1,23 @@
 import hashlib
 import inspect
 import json
+import logging
 import os
 import smtplib
 import sys
+from contextlib import contextmanager
 from datetime import datetime
 from email.mime.text import MIMEText
 from functools import wraps
 from pathlib import Path
 from time import time
+from typing import Optional
 
 import numpy as np
 
 import brukerbridge
+
+logger = logging.getLogger(__name__)
 
 
 def package_path() -> Path:
@@ -325,3 +330,30 @@ def touch(fp):
 def format_acq_path(acq_path: Path) -> str:
     user_name = acq_path.parent.parent.name
     return f"{user_name}: {acq_path.parent.name}/{acq_path.name}"
+
+
+@contextmanager
+def log_worker_exception(
+    worker_name: str,
+    work_label: str,
+    exc_info: bool,
+    reraise: bool,
+    success_msg: Optional[str] = None,
+):
+    """Logs an exception that occurs within this context, if one occurs. Only specific to worker exceptions as so far as the log message
+
+    success_msg is logged at INFO level if no errors are encountered
+    """
+    try:
+        yield
+        if success_msg is not None:
+            logger.info(success_msg)
+    except:
+        logger.critical(
+            "Fatal exceptions raised from %s %s worker",
+            work_label,
+            worker_name,
+            exc_info=exc_info,
+        )
+        if reraise:
+            raise

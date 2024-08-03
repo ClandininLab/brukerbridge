@@ -23,8 +23,8 @@ from brukerbridge.logging import (configure_logging, logger_thread,
                                   worker_process)
 from brukerbridge.transfer_fictrac import transfer_fictrac
 from brukerbridge.transfer_to_oak import start_oak_transfer
-from brukerbridge.utils import (format_acq_path, package_path,
-                                parse_malformed_json_bool, touch)
+from brukerbridge.utils import (format_acq_path, log_worker_exception,
+                                package_path, parse_malformed_json_bool, touch)
 
 logger = logging.getLogger()
 
@@ -115,7 +115,7 @@ def main(root_dir: str):
                             "%s ripping complete, queued for tiff conversion",
                             format_acq_path(acq_path),
                         )
-                        logger.debug("Ripper pid %s", ripper_process.pid)
+                        logger.debug("Killed ripper pid %s", ripper_process.pid)
                         del ripper_processes[acq_path]
 
                         tiff_queue.append(acq_path)
@@ -194,15 +194,11 @@ def main(root_dir: str):
                 # queue completed conversions for io
                 for acq_path, tiff_future in list(tiff_futures.items()):
                     if tiff_future.done():
-                        try:
+                        with log_worker_exception(
+                            "conversion", format_acq_path(acq_path), False, True
+                        ):
                             # raise possible remote exception
                             tiff_future.result()
-                        except:
-                            logger.critical(
-                                "Fatal exception raised from %s conversion worker",
-                                format_acq_path(acq_path),
-                            )
-                            raise
 
                         del tiff_futures[acq_path]
                         oak_io_queue.append(acq_path)
@@ -240,15 +236,11 @@ def main(root_dir: str):
 
                 for acq_path, oak_io_future in list(oak_io_futures.items()):
                     if oak_io_future.done():
-                        try:
+                        with log_worker_exception(
+                            "oak io", format_acq_path(acq_path), False, True
+                        ):
                             # raise possible remote exception
                             oak_io_future.result()
-                        except:
-                            logger.critical(
-                                "Fatal exception raised from %s oak io worker",
-                                format_acq_path(acq_path),
-                            )
-                            raise
 
                         del oak_io_futures[acq_path]
 
@@ -289,15 +281,9 @@ def main(root_dir: str):
 
                 for user_name, fictrac_io_future in list(fictrac_io_futures.items()):
                     if fictrac_io_future.done():
-                        try:
+                        with log_worker_exception("fictrac io", user_name, False, True):
                             # raise possible remote exception
                             fictrac_io_future.result()
-                        except:
-                            logger.critical(
-                                "Fatal exception raised from %s fictrac io worker",
-                                user_name,
-                            )
-                            raise
 
                         fictrac_io_future.result()
 
@@ -378,12 +364,16 @@ def main(root_dir: str):
 
                 time.sleep(30)
     except Exception as unhandled_exception:
-        logger.critical("Fatal exception", exc_info=True)  # type: ignore
+        logger.critical("Fatal exception. Will wait for worker processes to exit and then shutdown. FORCEFUL TERMINATION MAY CAUSE DATA LOSS", exc_info=True)  # type: ignore
+
+        handle_fatal(ripper_processes, tiff_futures, oak_io_futures, fictrac_io_futures)
+        logger.info("All processes have exited, shutting down")  # type: ignore
+
         raise unhandled_exception
     finally:
         # flush log queue before exiting
-        log_queue.put(None)
-        log_thread.join()
+        log_queue.put(None)  # type: ignore
+        log_thread.join()  # type: ignore
 
 
 def acq_config(acquisition_path: Path) -> dict:
@@ -524,3 +514,80 @@ def session_prefix(acq_path: Path) -> str:
         return acq_path.name[:-12]
     else:
         raise RuntimeError(f"Invalid suffix: {acq_path}")
+
+
+def handle_fatal(
+    ripper_processes: Dict[Path, subprocess.Popen],
+    tiff_futures: Dict[Path, concurrent.futures.Future],
+    oak_io_futures: Dict[Path, concurrent.futures.Future],
+    fictrac_io_futures: Dict[str, concurrent.futures.Future],
+):
+    """Log info about the other processes we're waiting for and handle other fatal exceptions"""
+    last_emitted = 0
+    while True:
+        for acq_path, ripper_process in list(ripper_processes.items()):
+            if ripping_complete(acq_path):
+                # wait a few seconds after the raw files are deleted to ensure process is actually finished
+                time.sleep(5)
+                ripper_process.kill()
+                del ripper_processes[acq_path]
+
+                logger.info("%s ripping complete.", format_acq_path(acq_path))
+                logger.debug("Killed ripper pid %s", ripper_process.pid)
+
+        for acq_path, tiff_future in list(tiff_futures.items()):
+            if tiff_future.done():
+                with log_worker_exception(
+                    "conversion",
+                    format_acq_path(acq_path),
+                    True,
+                    False,
+                    f"{format_acq_path(acq_path)} tiff conversion complete.",
+                ):
+                    tiff_future.result()
+
+                del tiff_futures[acq_path]
+
+        for acq_path, oak_io_future in list(oak_io_futures.items()):
+            if oak_io_future.done():
+                with log_worker_exception(
+                    "oak io",
+                    format_acq_path(acq_path),
+                    True,
+                    False,
+                ):
+                    # raise possible remote exception
+                    oak_io_future.result()
+
+                del oak_io_futures[acq_path]
+
+        for user_name, fictrac_io_future in list(fictrac_io_futures.items()):
+            if fictrac_io_future.done():
+                with log_worker_exception("fictrac io", user_name, True, False):
+                    # raise possible remote exception
+                    fictrac_io_future.result()
+
+                del fictrac_io_futures[user_name]
+
+        if any((ripper_processes, tiff_futures, oak_io_futures, fictrac_io_futures)):
+            # emit info every 5 minutes
+            if (time.time() - last_emitted) > 300:
+                if ripper_processes:
+                    logger.info(
+                        "Waiting for rippers: %s", list(ripper_processes.keys())
+                    )
+
+                if tiff_futures:
+                    logger.info(
+                        "Waiting for conversions: %s", list(tiff_futures.keys())
+                    )
+
+                if oak_io_futures:
+                    logger.info("Waiting for oak io: %s", list(oak_io_futures.keys()))
+
+                if fictrac_io_futures:
+                    logger.info("waiting for fictrac io: %s", list(fictrac_io_futures))
+
+                last_emitted = time.time()
+        else:
+            break
