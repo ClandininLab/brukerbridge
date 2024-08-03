@@ -55,9 +55,7 @@ def main(root_dir: str):
     LOCKFILE = Path(root_dir) / ".lockfile"
 
     configure_logging(LOG_DIR)
-    log_queue = multiprocessing.Manager().Queue(-1)
-    log_thread = threading.Thread(target=logger_thread, args=(log_queue,))
-    log_thread.start()
+
     logger = logging.getLogger("brukerbridge.main")
     logger.info("Started bridge process")
 
@@ -84,6 +82,11 @@ def main(root_dir: str):
     fictrac_io_futures: Dict[str, concurrent.futures.Future] = dict()
 
     try:
+        # set up machinery to allow logging from worker processes
+        log_queue = multiprocessing.Manager().Queue(-1)
+        log_thread = threading.Thread(target=logger_thread, args=(log_queue,))
+        log_thread.start()
+
         with concurrent.futures.ProcessPoolExecutor(
             max_workers=MAX_TIFF_WORKERS
         ) as tiff_executor, concurrent.futures.ProcessPoolExecutor(
