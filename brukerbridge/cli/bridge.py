@@ -607,7 +607,7 @@ def acquire_lock(lockfile: Path):
     if lockfile.exists():
         logger.critical(
             (
-                "Could not acquire lock. This probably means there is another instance of the bridge process running. "
+                "Could not acquire lock, exiting. This probably means there is another instance of the bridge process running. "
                 "If you are absolutely sure there isn't you can manually delete the lockfile %s"
             ),
             lockfile,
