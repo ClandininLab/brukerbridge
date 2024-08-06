@@ -23,7 +23,7 @@ dependencies = [
    "numpy",
    "scikit-image",
    "matplotlib",
-   "tiffile",
+   "pillow",
    "ftputil"
 ]
 
