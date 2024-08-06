@@ -611,6 +611,7 @@ def acquire_lock(lockfile: Path):
         logger.critical(
             (
                 "Could not acquire lock, exiting. This probably means there is another instance of the bridge process running. "
+                "A crashed caused by something other than python (out of memory, power outage, irate grad student) can also result in the lock not being released. "
                 "If you are absolutely sure there isn't you can manually delete the lockfile %s"
             ),
             lockfile,
