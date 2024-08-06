@@ -132,18 +132,18 @@ def tiff_to_nii(xml_file: str):
                         image_array[i, j, :, :] = img
 
         if isVolumeSeries:
-            # Will start as t,z,x,y. Want y,x,z,t
-            image_array = np.moveaxis(image_array, 1, -1)  # Now t,x,y,z
-            image_array = np.moveaxis(image_array, 0, -1)  # Now x,y,z,t
-            image_array = np.swapaxes(image_array, 0, 1)  # Now y,x,z,t
+            # Will start as t,z,x,y.
+            image_array = np.moveaxis(image_array, 1, -1)
+            image_array = np.moveaxis(image_array, 0, -1)
+            image_array = np.swapaxes(image_array, 0, 1)  # x, y, z, t
 
             # Toss last volume if aborted
             if aborted:
                 image_array = image_array[:, :, :, :-1]
         else:
-            image_array = np.squeeze(image_array)  # t, x, y
-            image_array = np.moveaxis(image_array, 0, -1)  # x, y, t
-            image_array = np.swapaxes(image_array, 0, 1)  # y, x, t
+            image_array = np.squeeze(image_array)  # t, y, x
+            image_array = np.moveaxis(image_array, 0, -1)
+            image_array = np.swapaxes(image_array, 0, 1)  # x, y, t
 
         logger.debug("%s, final array shape: %s", xml_file, image_array.shape)
 
