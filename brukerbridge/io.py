@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, Tuple, Union
 from xml.etree import ElementTree
 
+import nibabel as nib
 import numpy as np
 from PIL import Image
 
@@ -10,9 +11,11 @@ from brukerbridge.utils import format_acq_path
 
 logger = logging.getLogger(__name__)
 
-# NOTE: berger 8/6/24, I do not have a schema from Bruker so all of the
-# assumptions about the structure of acquistion xmls here are really just
-# educated guesses
+# NOTE: berger 8/6/24
+# I do not have a schema from Bruker so all of the assumptions about the
+# structure of acquistion xmls here are really just educated guesses
+
+AXIS_NAMES = ["XAxis", "YAxis", "ZAxis"]
 
 
 # type hinting getting a little ridiculous.. get in boys, we're writing java
@@ -66,7 +69,7 @@ def parse_acquisition_shape(
 
 
 def parse_acquisition_channel_info(xml_path: Path) -> Dict[int, str]:
-    """Parses index and name of channels from acuqisition xml
+    """Parses index and name of channels from acquisition xml
 
     Assumes that this is a well-formed acquisition xml and (implicitly) that the number of
     channels is fixed throughout the acquisition
@@ -90,6 +93,28 @@ def parse_acquisition_channel_info(xml_path: Path) -> Dict[int, str]:
     return channel_info
 
 
+def parse_acquisition_resolution(xml_path: Path) -> Tuple[float, float, float]:
+    """Extract resolution from acquisition xml. Assumes well-behaved xml
+
+    Returns:
+      resolution: (x_res, y_res, z_res), microns
+    """
+    acq_root = ElementTree.parse(xml_path).getroot()
+
+    resolution = []
+
+    for axis_name in AXIS_NAMES:
+        res_rec = acq_root.find(
+            f"./PVStateShard/PVStateValue[@key='micronsPerPixel']/IndexedValue[@index='{axis_name}']"
+        ).attrib[
+            "value"
+        ]  # type: ignore
+
+        resolution.append(float(res_rec))
+
+    return tuple(resolution)
+
+
 def single_plane_acquisition_frame_gen(xml_path: Path, channel: int):
     acq_path = xml_path.parent
     acq_root = ElementTree.parse(xml_path).getroot()
@@ -108,9 +133,9 @@ def single_plane_acquisition_frame_gen(xml_path: Path, channel: int):
     frames = sorted(frames, key=lambda frame: int(frame.attrib["index"]))
     assert len(frames) == acq_shape[2]
 
-    for frame_spec in frames:
+    for frame_rec in frames:
         # relative
-        frame_path = frame_spec.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
+        frame_path = frame_rec.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
 
         frame = np.array(Image.open(acq_path / frame_path))
         assert frame.shape == acq_shape[:2]
@@ -166,8 +191,8 @@ def volume_acquisition_frame_gen(xml_path: Path, channel: int):
     # cycle attribute is assumed to give ordering of sequences
     sequences = sorted(sequences, key=lambda sequence: int(sequence.attrib["cycle"]))
 
-    for vol_idx, sequence_spec in enumerate(sequences):
-        frames = sequence_spec.findall("./Frame")
+    for vol_idx, sequence_rec in enumerate(sequences):
+        frames = sequence_rec.findall("./Frame")
 
         # index attribute again assumed to give ordering within a sequence
         frames = sorted(frames, key=lambda frame: int(frame.attrib["index"]))
@@ -183,12 +208,39 @@ def volume_acquisition_frame_gen(xml_path: Path, channel: int):
             )
             break
 
-        for frame_spec in frames:
+        for frame_rec in frames:
             # relative
-            frame_path = frame_spec.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
+            frame_path = frame_rec.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
 
             frame = np.array(Image.open(acq_path / frame_path))
             assert frame.shape == acq_shape[:2]
             assert frame.dtype == np.uint16
 
             yield frame
+
+
+def write_nifti(xml_file: Path, channel: int, legacy: bool):
+    acq_path = xml_file.parent
+    output_path = acq_path / f"{acq_path.name}_channel_{channel}.nii"
+
+    acq_shape = parse_acquisition_shape(xml_file)
+
+    if len(acq_shape) == 3:
+        frame_gen = single_plane_acquisition_frame_gen(xml_file, channel)
+    else:
+        frame_gen = volume_acquisition_frame_gen(xml_file, channel)
+
+    hdr = nib.nifti1.Nifti1Header()
+    hdr.set_data_dtype(np.uint16)
+    # NOTE: nifti (or at least nibabel) expects Fortran style column-major
+    # order for the data block. We write our frames in a tranposed row-major
+    # order, so this is fine
+    hdr.set_data_shape(acq_shape)
+
+    hdr.set_sform(np.eye(4))
+
+    # released from the shackles of backwards compatibility, we can add some useful to the header
+    # much of this turns out to be rather important for getting to registration
+    if not legacy:
+        # TODO: double pixdim[0], orientation info
+        resolution = parse_acquisition_resolution(xml_file)
