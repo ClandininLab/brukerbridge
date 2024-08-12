@@ -46,7 +46,7 @@ RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.5.64.600\Prairie View\Utilities
 
 # max concurrent processes
 MAX_RIPPERS = 8
-MAX_TIFF_WORKERS = 4
+MAX_TIFF_WORKERS = 1
 MAX_OAK_WORKERS = 4
 
 
