@@ -131,7 +131,7 @@ def main(root_dir: str):
                         tiff_queue.append(acq_path)
 
                 # start new rippers up to the limit
-                while len(ripper_processes) <= MAX_RIPPERS:
+                while len(ripper_processes) < MAX_RIPPERS:
                     if not rip_queue:
                         break
 
