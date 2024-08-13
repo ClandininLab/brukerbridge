@@ -30,14 +30,14 @@ logger = logging.getLogger()
 
 LOG_DIR = "C:/Users/User/logs"
 
-SUFFIX_WHITELIST = [
+SUFFIX_WHITELIST = (
     ".nii",
     ".csv",
     ".xml",
     "json",
     "tiff",
     "hdf5",
-]
+)
 
 # this is set by what Image-Block Ripping utility is used and can be easily changed
 SUPPORTED_PRAIREVIEW_VERSION = "5.5.64.600"

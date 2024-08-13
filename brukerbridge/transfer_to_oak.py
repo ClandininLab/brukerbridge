@@ -3,7 +3,7 @@ import os
 import time
 from pathlib import Path
 from shutil import copyfile
-from typing import List, Optional
+from typing import Optional, Tuple
 
 from brukerbridge.utils import format_acq_path, get_dir_size, touch
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def transfer_to_oak(
     source: str,
     target: str,
-    allowable_extensions: Optional[List[str]],
+    suffix_whitelist: Tuple[str],
     transferred: float,
 ):
     for item in os.listdir(source):
@@ -29,15 +29,14 @@ def transfer_to_oak(
                 logger.debug("%s already exists", target_path)
 
             transferred += transfer_to_oak(
-                source_path, target_path, allowable_extensions, transferred
+                source_path, target_path, suffix_whitelist, transferred
             )
         else:
             if os.path.isfile(target_path):
                 logger.debug("file already exists %s", target_path)
             else:
-                if allowable_extensions is not None:
-                    if source_path[-4:] not in allowable_extensions:
-                        continue
+                if not source_path.endswith(suffix_whitelist):
+                    continue
 
                 t_s = time.time()
                 copyfile(source_path, target_path)
@@ -68,7 +67,7 @@ def transfer_to_oak(
 def start_oak_transfer(
     acq_path: Path,
     oak_target: Path,
-    allowable_extensions: Optional[List[str]],
+    allowable_extensions: Tuple[str],
     add_to_build_que: bool,
 ):
     sess_relative_acq_path = acq_path.relative_to(acq_path.parent.parent)
@@ -77,7 +76,7 @@ def start_oak_transfer(
 
     target_path.mkdir(parents=True, exist_ok=True)
 
-    acq_size_gb = get_dir_size(acq_path, suffix_whitelist=allowable_extensions)
+    acq_size_gb = get_dir_size(str(acq_path), suffix_whitelist=allowable_extensions)
 
     start_time = time.time()
     transferred_gb = transfer_to_oak(

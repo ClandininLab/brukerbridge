@@ -11,7 +11,7 @@ from email.mime.text import MIMEText
 from functools import wraps
 from pathlib import Path
 from time import time
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -172,7 +172,7 @@ def get_num_files(directory):
     return num_files
 
 
-def get_dir_size(directory, suffix_whitelist=None):
+def get_dir_size(directory: str, suffix_whitelist: Optional[Tuple[str]] = None):
     """recursive dir size"""
     total_size = 0
     for dirpath, _, filenames in os.walk(directory):
@@ -181,8 +181,7 @@ def get_dir_size(directory, suffix_whitelist=None):
             # skip if it is symbolic link
             if not os.path.islink(fp):
                 if suffix_whitelist is not None:
-                    whitelisted = [fp.endswith(suffix) for suffix in suffix_whitelist]
-                    if not any(whitelisted):
+                    if not fp.endswith(suffix_whitelist):
                         continue
 
                 total_size += os.path.getsize(fp)
