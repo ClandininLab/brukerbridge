@@ -36,7 +36,7 @@ Optional fields:
 
 Deprecated fields:
 
-- `transfer_fictrac`: bool. deprecated. omit this and move your fictrac files manually. support has been feebly maintained, but no one should be using this.
+- `transfer_fictrac`: bool. deprecated. doesn't do anything. omit this and move your fictrac files manually.
 - `email`: you will not receive any emails. just check the logs.
 
 
