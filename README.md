@@ -1,43 +1,105 @@
 # brukerbridge
-This boutique package is used to make processing Bruker output files more convenient by automating several steps:
-- Transfer of files from Bruker computer to "workhorse" computer in D217
-- Conversion of Bruker Raw files to Tiffs
-- Conversion of single tiff files to desired format (.nii, .tif stack)
-- Upload of files to desired Oak (our lab's data storage) directory
 
-How do I use it?
-- New users must add their preferences on the bridge computer in D217 (this only needs to be done once)
-  - navigate to C:\Users\User\projects\brukerbridge\users
-  - each user has a .json file. Simply copy an existing user file, rename the file with your name, and adjust the preferences as desired
-- When you are done with imaging for the day, simply double click the shortcut icon on the Bruker desktop "brukerbridge.bat". You will be prompted to select the folder you want to process. Upon selection, a terminal window will open and begin printing file transfer progress. Now, all you have to do is wait for the processing steps to complete.
-- The pipeline assumes your Bruker directory will be located as Drive:\user\DIR, ie
-  1. your username should be at the root of the drive, and 
-  2. the directory you want to process must have your user directory as it's immediate parent, and
-  3. your username must match the name of the .json preferences file created on the bridge computer
-- When collecting bruker data, do not automatically convert to tif, since they take forever to transfer - the pipeline wants bruker raw files. This setting is in Prairie View Preferences/Automatically Convert Raw Files/Never
-- To implement a queue, brukerbridge now consists of two main loops.
-	1) **server.py** - this should always be running but if it hit an error you can restart it from the desktop shortcut LAUNCH SERVER.
-	The server's only job is to transfer files from the bruker computer to the bridge computer. It is listening for the bruker computer client to send files.
-	After it has downloaded a set of files, it will append "__queue__" to end of the directory name. This is what the second loop (next point) is waiting and looking for. The server logs all output (stdout and stderr) to dataflow_logs\server_log.txt in append mode.
-	2) **queue_watcher.py** - this should always be running but if it hit an error you can restart it from the desktop shortcut QUEUE WATCHER. This script is waiting to see a directory with a __queue__ flag. If it sees one it will launch main.py on this directory, which will do all the real data processing. The output of every new proccessing job will be saved to a new datetime.txt file in dataflow_logs.
-- To view the output of these two loops in real time use the program mTAIL. This watches a text file and displays updates in real time. Open one window that watches server_log.txt, and another window that watches dataflow_log_\*.txt. The wildcard (\*) will let mTAIL track the most recently created log.
-- If you have a backlog of directories to process, manually add \_\_lowqueue__ to the end of the directories you want processed (so like 20220325__lowqueue__). queue_watcher will pick this directory to process as long as there is no directory with \_\_queue__.
+Converts raw imaging data into more useful formats and handles I/O between the Bruker computer and oak.
 
-Some more details:
-- The sub-directory structure of the directory you select for processing will be retained
-- All files will be transfered (including Bruker .xml files, any .csv files for Voltage Recording or Output)
-- Files will be automatically deleted from the bruker computer once they are transfered, as long as all files pass checksum (confirms that they are not corrupted).
-- Currently, the pipeline makes separate nii files for each color channel imaged. Multichannel-support could be easily implemented, but may not work on large files due to memory constraints on workhorse computer.
-- Bi-directional scans are correctly identified and parsed
-- Single-plane imaging is supported.
+Please address your thank you notes for having to maintain/use this software to the engineers at Bruker who did not release a linux executable for their utility that converts their custom format to tiffs.
 
-Current user preferences:
-- oak_target - upload directory on Oak
-- convert_to - must be "nii" or "tiff"
-- email - will send success or failure message here
-- add_to_build_que - "False" unless you know otherwise
-- transfer_fictrac - will transfer fictrac files from fictrac computer above bruker
+## Usage
 
-Troubleshooting:
-- failed connection error when running brukerbridge.bat?
-    - There is a python server running on the workhorse computer that waits to recieve info from Bruker computer. This server must be running. A terminal should be open and say "Ready to recieve files from Bruker client." If this is not running, you must start the server by navigating to "C:\Users\User\projects\brukerbridge\brukerbridge" and running python server.py on the command line.
+### Initial setup
+
+All users must create a config json file in brukerbridge/users. It is VERY important that the source code on the brukerbridge be properly version controlled, follow this protocol precisely to add or update config:
+
+1. check that there is no unchecked work in the brukerbridge copy of the source code
+   - on the brukerbridge computer open a new command prompt
+   - execute `cd src\brukerbridge`
+   - execute `git status`
+   - if this says `up to date with origin/master` and there is are no unstaged or untracked files move on to the next step
+   - if there are unstaged or untracked files, they must be either removed or committed to the repo. do this very carefully, this could break things. if you don't know how to do this contact whoever the current boffin is
+2. make a local clone of the brukerbridge source code
+3. add your config file (see next section)
+4. commit it and push to master
+5. on the brukerbridge computer, execute `git pull`
+
+#### config format and imaging folder naming requirements
+
+You must specify your config as a json file which shares a name with your imaging folder on the Bruker computer (case-sensitive). For instance if you name your config `levitsky.json` then your imaging folder on Bruker must be named `levitsky`. The contents of `levitsky` would be something like `levitsky/[current date]/TSeries-[current date]`. Using dates to label imaging sessions is just a convention, you can name them anything you want. You could do `levitsky/go_bears/beat_stanford` and as long as `beat_stanford` contains a valid Bruker xml file brukerbridge will happily process your images.
+
+Within the json the following fields are mandatory:
+
+- `oak_target`: string. absolute path to where you want your imagery to end up on oak. must start with `X:` which is the drive oak is mapped to on the brukerbridge computer
+-  `convert_to`: string. either `nii` or `tiff`. you almost certainly want to use `nii`.  tiff conversion is feebly supported, for now.
+
+Optional fields:
+- `add_to_build_que`: bool. legacy. it's a brainsss thing.
+- `split`: bool. set this if you want your niftis in chunks (by time). this was mostly to avoid OOMs for giant imaging sessions, which is no longer necessary.
+
+Deprecated fields:
+
+- `transfer_fictrac`: bool. deprecated. omit this and move your fictrac files manually. support has been feebly maintained, but no one should be using this.
+- `email`: you will not receive any emails. just check the logs.
+
+
+Here's a minimal example:
+
+```json
+{
+    "oak_target": "X:/data/levitsky/imaging/import",
+    "convert_to": "nii"
+}
+```
+
+
+### Once you've finished an imaging session
+
+From the Bruker computer, open the `brukerbridge.bat` icon in the desktop, select the imaging session you want to process. This is typically named as the current date and must contain Tseries. If you get a failed connection error it's probably because the server process isn't running. Walk over to D217 and start it then try again.
+
+## Troubleshooting
+
+There are two processes that run in tandem, a server process that just handles IO between the Bruker computer and the Brukerbridge computer and a `bridge` process which does everything else.
+
+### Troubleshooting the server process
+
+- check the logs. `C:\Users\User\Desktop\dataflow_logs`
+- make sure the server is running
+
+author: Bella Brezovec
+
+maintainer: Andrew Berger
+
+### Troubleshooting the bridge process
+
+1. check the logs! they are usually quite informative. use `baretail` which highlights more severe messages in bright colors. logs live in `C:\Users\User\logs`. logs from previous days are renamed appropriately. `bridge.log` has messages at level INFO and above. `bridge_error.log` contains only ERROR and CRITICAL messages. `bridge_debug.log` contains everything.
+2. if bridge crashed due to a recoverable error (such as OOM), restart using the `launch bridge` icon on the desktop.
+3. if all else fails, contact Andrew Berger (andbberger@gmail.com)
+
+author: Andrew Berger
+
+maintainer: Andrew Berger
+
+
+## How do I.......
+
+### Change the target drive on the Brukerbridge computer?
+
+scripts/launch_bridge.bat
+
+### update python/windows/move to a new computer?
+
+don't.
+
+### Install a larger hard drive in the Brukerbridge computer?
+
+you can't. the old drives were replaced in July 2024 with the best possible configuration for the motherboard (4 4TB SSDs in RAID 10). the `bridge` process has high random I/O requirements, performance will tank on hard drives.
+
+## Things you might want to know
+
+- `bridge` runs ripping, conversion and oak I/O in parallel for every person and acquisition. If you've been waiting a long time for your files it's probably because it's still running the conversion step.
+- `bridge` looks for (acquisition) directories containing a valid Bruker xml file within a (session) directory suffixed by `__queue__`. the queue suffix is removed once all acquisitions from a session have been processed.
+- an empty file named `.complete` is added to an acquistion directory once it has been processed to mark it as complete
+- files are deleted from the Bruker computer once the transfer is validated, but they are NOT deleted from the brukerbridge once processing is copmlete. you must clean out your processed files, and do so frequently because the hard drive is not that big. the reason for this is that is difficult to validate checksums on oak and that this would be an expensive feature to develop.
+- each channel is written as its own NIfTI. NIfTI supports multi-channel images, but `bridge`'s streaming io logic doesn't. might be possible if NIfTI's internal axis order is a certain way. exercise to the reader (hard).
+- bidirectional z scans are not supported. they used to be. refer to the source of `brukerbridge.io` for an explanation. exercise to the reader (easy)
+- single-plane imaging is supported
+- there are no longer any constraints to the size of NIfTIs `bridge` can write. however, once you get over 64GB or so they start to get really unwieldly to work with on sherlock (our largest nodes have 256GB of memory), so you may want to set the `split` field in the config to limit size.
+- if `bridge` encounters an irrecoverable error processing an acquisition that acquisition will be suffixed by `__error__` andignored. This often happens when an acquisition contains an invalid xml. Check the logs to find out what happened, if the error is recoverable manually simply delete error suffix and `bridge` will try again. You may have to add the `__queue__` suffix to the parent session directory of all other acquisitions from that session have already been processed.
