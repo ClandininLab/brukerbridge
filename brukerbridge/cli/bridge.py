@@ -22,7 +22,6 @@ from brukerbridge import (convert_tiff_collections_to_nii,
 from brukerbridge.io import copy_session_metadata
 from brukerbridge.logging import (configure_logging, logger_thread,
                                   worker_process)
-from brukerbridge.transfer_fictrac import transfer_fictrac
 from brukerbridge.transfer_to_oak import start_oak_transfer
 from brukerbridge.utils import (format_acq_path, log_worker_exception,
                                 package_path, parse_malformed_json_bool, touch)
@@ -65,7 +64,6 @@ def main(root_dir: str):
     rip_queue: Deque[Path] = deque()
     tiff_queue: Deque[Path] = deque()
     oak_io_queue: Deque[Path] = deque()
-    fictrac_io_queue: Deque[Path] = deque()
 
     # acquisitions in any stage of processing
     in_process_acqs: Set[Path] = set()
@@ -79,8 +77,6 @@ def main(root_dir: str):
     tiff_futures: Dict[Path, concurrent.futures.Future] = dict()
     # acq_path: Future
     oak_io_futures: Dict[Path, concurrent.futures.Future] = dict()
-    # user: Future
-    fictrac_io_futures: Dict[str, concurrent.futures.Future] = dict()
 
     try:
         # set up machinery to allow logging from worker processes
@@ -213,7 +209,6 @@ def main(root_dir: str):
 
                         del tiff_futures[acq_path]
                         oak_io_queue.append(acq_path)
-                        fictrac_io_queue.append(acq_path)
 
                         logger.info(
                             "%s tiff conversion complete, queued for io",
@@ -256,53 +251,6 @@ def main(root_dir: str):
                         del oak_io_futures[acq_path]
 
                 # ====================================
-                # ============ FICTRAC IO ============
-                # ====================================
-
-                logger = logging.getLogger("brukerbridge.main.io.fictrac")
-
-                # NOTE: it's unclear whether this is actively in use as only a
-                # few people have the transfer_fictrac setting enabled in their
-                # config
-
-                # NOTE: as the fictrac IO logic is indexed by user instead of
-                # acquisition, different bookkeeping logic is required here to
-                # prevent starting multiple simultaneous sessions for a single user
-
-                while len(fictrac_io_queue) > 0:
-                    acq_path = fictrac_io_queue.popleft()
-                    user_name = acq_path.parent.parent.name
-                    config = acq_config(acq_path)
-
-                    # if user_name is in fictrac_io_futures then we have very
-                    # recently done io for fictrac and can safely move on
-                    # without trying again
-                    if (
-                        parse_malformed_json_bool(config.get("transfer_fictrac", False))
-                        and user_name not in fictrac_io_futures
-                    ):
-                        # TODO: test multiple simultaneous FTP instances
-                        fictrac_io_futures[user_name] = io_executor.submit(
-                            worker_process, transfer_fictrac, log_queue, user_name
-                        )
-                        logger.debug(
-                            "Spawned fictrac io process for %s",
-                            format_acq_path(acq_path),
-                        )
-
-                for user_name, fictrac_io_future in list(fictrac_io_futures.items()):
-                    if fictrac_io_future.done():
-                        with log_worker_exception("fictrac io", user_name, False, True):
-                            # raise possible remote exception
-                            fictrac_io_future.result()
-
-                        fictrac_io_future.result()
-
-                        del fictrac_io_futures[user_name]
-
-                        logger.info("fictrac io for %s complete", user_name)
-
-                # ====================================
                 # ============ BOOKKEEPING ===========
                 # ====================================
 
@@ -310,8 +258,6 @@ def main(root_dir: str):
 
                 # check for completed acquisitions
                 for acq_path in list(in_process_acqs):
-                    user_name = acq_path.parent.parent.name
-
                     if acq_path in ripper_processes or acq_path in rip_queue:
                         continue
 
@@ -319,9 +265,6 @@ def main(root_dir: str):
                         continue
 
                     if acq_path in oak_io_futures:
-                        continue
-
-                    if user_name in fictrac_io_futures:
                         continue
 
                     # leave a sentinel to mark this acquisition as complete
@@ -374,13 +317,15 @@ def main(root_dir: str):
                                 sub_target_path,
                             )
 
+                        warn_deprecated_config_options(session_path)
+
                         logger.info("Completed session %s", session_path)
 
                 time.sleep(30)
     except Exception as unhandled_exception:
         logger.critical("Fatal exception. Will wait for worker processes to exit and then shutdown. FORCEFUL TERMINATION MAY CAUSE DATA LOSS", exc_info=True)  # type: ignore
 
-        handle_fatal(ripper_processes, tiff_futures, oak_io_futures, fictrac_io_futures)
+        handle_fatal(ripper_processes, tiff_futures, oak_io_futures)
         logger.info("All processes have exited, shutting down")  # type: ignore
 
         raise unhandled_exception
@@ -397,6 +342,27 @@ def acq_config(acquisition_path: Path) -> dict:
     user_name = acquisition_path.parent.parent.name
     with open(f"{package_path()}/users/{user_name}.json", "r") as handle:
         return json.load(handle)
+
+
+def warn_deprecated_config_options(session_path: Path):
+    """Look up user config, raise warnings for any deprecated options that have been set"""
+    user_name = session_path.parent.name
+    with open(f"{package_path()}/users/{user_name}.json", "r") as handle:
+        config = json.load(handle)
+
+    # NOTE: email is also deprecated, but never did anything. and since
+    # everyone has it in their config it's just going to result in a lot of
+    # annooying messages, so no warning.
+
+    if "transfer_fictrac" in config and parse_malformed_json_bool(
+        config["transfer_fictrac"]
+    ):
+        logger.warning(
+            (
+                "%s: you have enabled the deprecated 'transfer_fictrac' option in your config. "
+                "It never worked and now it's gone for the good. Copy your fictrac files over manually"
+            )
+        )
 
 
 def ripping_complete(acquisition_path: Path) -> bool:
@@ -540,7 +506,6 @@ def handle_fatal(
     ripper_processes: Dict[Path, subprocess.Popen],
     tiff_futures: Dict[Path, concurrent.futures.Future],
     oak_io_futures: Dict[Path, concurrent.futures.Future],
-    fictrac_io_futures: Dict[str, concurrent.futures.Future],
 ):
     """Log info about the other processes we're waiting for and handle other fatal exceptions"""
     last_emitted = 0
@@ -581,15 +546,7 @@ def handle_fatal(
 
                 del oak_io_futures[acq_path]
 
-        for user_name, fictrac_io_future in list(fictrac_io_futures.items()):
-            if fictrac_io_future.done():
-                with log_worker_exception("fictrac io", user_name, True, False):
-                    # raise possible remote exception
-                    fictrac_io_future.result()
-
-                del fictrac_io_futures[user_name]
-
-        if any((ripper_processes, tiff_futures, oak_io_futures, fictrac_io_futures)):
+        if any((ripper_processes, tiff_futures, oak_io_futures)):
             # emit info every 5 minutes
             if (time.time() - last_emitted) > 300:
                 if ripper_processes:
@@ -604,9 +561,6 @@ def handle_fatal(
 
                 if oak_io_futures:
                     logger.info("Waiting for oak io: %s", list(oak_io_futures.keys()))
-
-                if fictrac_io_futures:
-                    logger.info("waiting for fictrac io: %s", list(fictrac_io_futures))
 
                 last_emitted = time.time()
         else:
