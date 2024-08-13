@@ -109,6 +109,13 @@ def start_oak_transfer(
                 t_d,
                 1e3 * transferred_gb / t_d,
             )
+
+        logger.debug(
+            "%s upload: transferred %f GB of %f GB",
+            format_acq_path(acq_path),
+            transferred_gb,
+            acq_size_gb,
+        )
     except ZeroDivisionError:
         logger.error(
             "Spacetime is broken or this is now the fastest computer in history"

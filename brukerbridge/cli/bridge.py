@@ -361,7 +361,8 @@ def warn_deprecated_config_options(session_path: Path):
             (
                 "%s: you have enabled the deprecated 'transfer_fictrac' option in your config. "
                 "It never worked and now it's gone for the good. Copy your fictrac files over manually"
-            )
+            ),
+            user_name,
         )
 
 
