@@ -19,6 +19,7 @@ from xml.etree import ElementTree
 from brukerbridge import (convert_tiff_collections_to_nii,
                           convert_tiff_collections_to_nii_split,
                           convert_tiff_collections_to_stack)
+from brukerbridge.io import copy_session_metadata
 from brukerbridge.logging import (configure_logging, logger_thread,
                                   worker_process)
 from brukerbridge.transfer_fictrac import transfer_fictrac
@@ -341,6 +342,9 @@ def main(root_dir: str):
                         )
 
                         del in_process_sessions[session_path]
+
+                        copy_session_metadata(session_path)
+
                         try:
                             os.rename(
                                 session_path,
@@ -442,6 +446,10 @@ def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[
             continue
 
         for acq_path in marked_dir.iterdir():
+            # ignore metadata files a session dir might contain
+            if not acq_path.is_dir():
+                continue
+
             # acq is already being processed
             if acq_path in in_process_acqs:
                 continue
