@@ -108,9 +108,9 @@ def parse_acquisition_resolution(xml_path: Path) -> Tuple[float, float, float]:
     for axis_name in AXIS_NAMES:
         res_rec = acq_root.find(
             f"./PVStateShard/PVStateValue[@key='micronsPerPixel']/IndexedValue[@index='{axis_name}']"
-        ).attrib[
+        ).attrib[  # type: ignore
             "value"
-        ]  # type: ignore
+        ]
 
         resolution.append(float(res_rec))
 
@@ -221,31 +221,40 @@ def volume_acquisition_frame_gen(xml_path: Path, channel: int):
             yield frame
 
 
-def write_nifti(xml_file: Path, channel: int, legacy: bool):
+def write_nifti(xml_file: Path, channel: int):
     acq_path = xml_file.parent
     output_path = acq_path / f"{acq_path.name}_channel_{channel}.nii"
 
     acq_shape = parse_acquisition_shape(xml_file)
 
     if len(acq_shape) == 3:
-        frame_gen = single_plane_acquisition_frame_gen(xml_file, channel)
+        frames = single_plane_acquisition_frame_gen(xml_file, channel)
     else:
-        frame_gen = volume_acquisition_frame_gen(xml_file, channel)
+        frames = volume_acquisition_frame_gen(xml_file, channel)
 
     hdr = nib.nifti1.Nifti1Header()
     hdr.set_data_dtype(np.uint16)
     # NOTE: nifti (or at least nibabel) expects Fortran style column-major
-    # order for the data block. We write our frames in a tranposed row-major
-    # order, so this is fine
+    # order for the data block, but evidently expects C style row-major order for the shape
     hdr.set_data_shape(acq_shape)
 
     hdr.set_sform(np.eye(4))
 
-    # released from the shackles of backwards compatibility, we can add some useful to the header
-    # much of this turns out to be rather important for getting to registration
-    if not legacy:
-        # TODO: double pixdim[0], orientation info
-        resolution = parse_acquisition_resolution(xml_file)
+    # NOTE: NIfTI supports data scaling, which nibabel uses to maximize
+    # precision. We have no use for this since we're saving 13-bit data as uint16s.
+    assert hdr.get_slope_inter() == (1.0, 0.0)
+
+    with open(output_path, "wb") as img_fh:
+        hdr.write_to(img_fh)
+
+        img_fh.seek(hdr.get_data_offset())
+        assert img_fh.tell() == hdr.get_data_offset()
+
+        for frame in frames:
+            # NOTE: the net result of this transposition and the frame
+            # generators is Fortra style column-major order
+            for slc in frame.T:
+                img_fh.write(slc.tobytes())
 
 
 def copy_session_metadata(session_path: Path):
