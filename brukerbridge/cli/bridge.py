@@ -16,10 +16,10 @@ from pathlib import Path
 from typing import Deque, Dict, List, Set
 from xml.etree import ElementTree
 
-from brukerbridge import (convert_tiff_collections_to_nii,
-                          convert_tiff_collections_to_nii_split,
-                          convert_tiff_collections_to_stack)
 from brukerbridge.io import copy_session_metadata
+from brukerbridge.legacy import (convert_tiff_collections_to_nii,
+                                 convert_tiff_collections_to_nii_split,
+                                 convert_tiff_collections_to_stack)
 from brukerbridge.logging import (configure_logging, logger_thread,
                                   worker_process)
 from brukerbridge.transfer_to_oak import start_oak_transfer

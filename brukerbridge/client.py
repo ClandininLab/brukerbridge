@@ -4,7 +4,7 @@ from socket import socket
 from tkinter import Tk  # from tkinter import Tk for Python 3.x
 from tkinter.filedialog import askdirectory
 
-import brukerbridge as bridge
+from brukerbridge.utils import get_checksum, get_dir_size, get_num_files
 
 CHUNKSIZE = 1_000_000
 
@@ -42,8 +42,8 @@ sock.connect((host, port))
 ##########################
 
 print("Calculating directory size... ", end="")
-source_directory_size = bridge.get_dir_size(source_directory)
-num_files = bridge.get_num_files(source_directory)
+source_directory_size = get_dir_size(source_directory)
+num_files = get_num_files(source_directory)
 print("Done   |  {} GB   |   {} Files".format(source_directory_size, num_files))
 
 sock.sendall(str(source_directory_size).encode() + b"\n")
@@ -62,7 +62,7 @@ for path, dirs, files in os.walk(source_directory):
         filesize = os.path.getsize(filename)
         print(f"Sending {relpath}")
 
-        checksum = bridge.get_checksum(filename)
+        checksum = get_checksum(filename)
 
         with open(filename, "rb") as f:
             sock.sendall(relpath.encode() + b"\n")

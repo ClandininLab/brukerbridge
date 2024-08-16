@@ -3,7 +3,7 @@ import time
 from socket import socket
 from time import strftime
 
-import brukerbridge as bridge
+from brukerbridge.utils import get_checksum, print_progress_table
 
 verbose = False
 CHUNKSIZE = 1_000_000
@@ -88,7 +88,7 @@ while True:
                     if verbose:
                         print("Complete", end="", flush=True)
 
-            checksum_copy = bridge.get_checksum(path)
+            checksum_copy = get_checksum(path)
 
             if checksum_original == checksum_copy:
                 if verbose:
@@ -109,7 +109,7 @@ while True:
             ######################
             ### Print Progress ###
             ######################
-            bridge.print_progress_table(
+            print_progress_table(
                 start_time=start_time,
                 current_iteration=num_files_transfered,
                 total_iterations=total_num_files,
