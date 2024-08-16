@@ -30,6 +30,11 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/ClandininLab/brukerbridge"
 
+[project.optional-dependencies]
+test = [
+     "pytest"
+]
+
 [tool.isort]
 known_first_party=["brukerbridge"]
 
