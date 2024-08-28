@@ -102,7 +102,8 @@ def main(root_dir: str):
                 in_process_acqs.update(marked_acqs)
                 rip_queue.extend(marked_acqs)
                 for marked_acq in marked_acqs:
-                    in_process_sessions[marked_acq.parent].add(marked_acq)
+                    sess_path = list(marked_acq.parents)[-2]
+                    in_process_sessions[sess_path].add(marked_acq)
                     logger.info("Queued %s for processing", format_acq_path(marked_acq))
 
                 # =================================================
