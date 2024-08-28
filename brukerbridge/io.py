@@ -221,16 +221,16 @@ def volume_acquisition_frame_gen(xml_path: Path, channel: int):
             yield frame
 
 
-def write_nifti(xml_file: Path, channel: int):
-    acq_path = xml_file.parent
+def write_nifti(xml_path: Path, channel: int):
+    acq_path = xml_path.parent
     output_path = acq_path / f"{acq_path.name}_channel_{channel}.nii"
 
-    acq_shape = parse_acquisition_shape(xml_file)
+    acq_shape = parse_acquisition_shape(xml_path)
 
     if len(acq_shape) == 3:
-        frames = single_plane_acquisition_frame_gen(xml_file, channel)
+        frames = single_plane_acquisition_frame_gen(xml_path, channel)
     else:
-        frames = volume_acquisition_frame_gen(xml_file, channel)
+        frames = volume_acquisition_frame_gen(xml_path, channel)
 
     hdr = nib.nifti1.Nifti1Header()
     hdr.set_data_dtype(np.uint16)

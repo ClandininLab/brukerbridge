@@ -3,10 +3,16 @@
 
 import json
 import shutil
+from glob import glob
 
+import nibabel as nib
 import pytest
 # in 3.9 and above files is provided by importlib.resources
 from importlib_resources import files
+
+from brukerbridge.legacy.tiff_to_nii import convert_tiff_collections_to_nii
+from brukerbridge.legacy.tiff_to_nii_split import \
+    convert_tiff_collections_to_nii_split
 
 DATA_DRIVE = "D:"
 
@@ -92,21 +98,65 @@ def split_nii_config(tmp_user, request):
     config_path.unlink()
 
 
+@pytest.fixture(params=[1, 2])
+def channel(request):
+    return request.param
+
+
+@pytest.fixture(params=["small", "med"])
+def size(request):
+    return request.param
+
+
 @pytest.fixture
-def single_plane_acquisition(tmp_user, test_data_path):
-    """Copies over some test data and returns the path"""
-    reserve_acq_path = test_data_path / "test_acquisitions/single_plane"
-    test_acq_path = tmp_user / "single_plane"
+def sp_acq_xml_path(size, tmp_user, test_data_path):
+    """Copies over some test data and returns the path to the xml"""
+    reserve_acq_path = test_data_path / f"test_acquisitions/sp_{size}"
+    test_acq_path = tmp_user / f"sp_{size}"
     shutil.copy(reserve_acq_path, test_acq_path)
+
+    xml_glob = test_acq_path.glob("*.xml")
+    assert len(xml_glob) == 1
+
+    return xml_glob[0]
+
+
+@pytest.fixture
+def vol_acq_xml_path(size, tmp_user, test_data_path):
+    """Copies over some test data and returns the path to the xml"""
+    reserve_acq_path = test_data_path / f"test_acquisitions/vol_{size}"
+    test_acq_path = tmp_user / f"vol_{size}"
+    shutil.copy(reserve_acq_path, test_acq_path)
+
+    xml_glob = test_acq_path.glob("*.xml")
+    assert len(xml_glob) == 1
 
     return test_acq_path
 
 
 @pytest.fixture
-def volume_acquisition(tmp_user, test_data_path):
-    """Copies over some test data and returns the path"""
-    reserve_acq_path = test_data_path / "test_acquisitions/volume"
-    test_acq_path = tmp_user / "volume"
-    shutil.copy(reserve_acq_path, test_acq_path)
+def monolithic_sp_target(size, channel, test_data_path):
+    matching_paths = glob(
+        test_data_path / f"conversion_targets/sp_{size}/*_channel_{channel}.nii"
+    )
+    assert len(matching_paths) == 1
+    return nib.load(matching_paths[0])
 
-    return test_acq_path
+
+@pytest.fixture
+def monolithic_vol_target(size, channel, test_data_path):
+    matching_paths = glob(
+        test_data_path / f"conversion_targets/_{size}/*_channel_{channel}.nii"
+    )
+    assert len(matching_paths) == 1
+    return nib.load(matching_paths[0])
+
+
+@pytest.fixture
+def split_sp_targests(single_plane_acquisition):
+    pass
+
+
+@pytest.fixture
+def split_vol_targets(volume_acquisition):
+    pass
