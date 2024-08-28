@@ -259,6 +259,8 @@ def write_nifti(xml_path: Path, channel: int):
 
 def copy_session_metadata(session_path: Path):
     """Copy any session level files to the oak target, presumed to be metadata"""
+    logger.debug("copy_session_metadata session_path: %s", session_path)
+
     user_name = session_path.parent.name
     with open(f"{package_path()}/users/{user_name}.json", "r") as handle:
         user_config = json.load(handle)
