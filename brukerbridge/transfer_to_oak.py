@@ -72,7 +72,7 @@ def start_oak_transfer(
 ):
     # for some reason Path.parents is its own bizarre object that is not an
     # iterator and only supports positive indexing
-    sess_path = list(acq_path.parents)[-2]
+    sess_path = list(acq_path.parents)[-3]
     sess_relative_acq_path = acq_path.relative_to(sess_path)
     target_path = oak_target / sess_relative_acq_path
     logger.debug("target path: %s", target_path)
