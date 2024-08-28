@@ -70,7 +70,10 @@ def start_oak_transfer(
     allowable_extensions: Tuple[str],
     add_to_build_que: bool,
 ):
-    sess_relative_acq_path = acq_path.relative_to(acq_path.parent.parent)
+    # for some reason Path.parents is its own bizarre object that is not an
+    # iterator and only supports positive indexing
+    sess_path = list(acq_path.parents)[-2]
+    sess_relative_acq_path = acq_path.relative_to(sess_path)
     target_path = oak_target / sess_relative_acq_path
     logger.debug("target path: %s", target_path)
 
@@ -121,7 +124,7 @@ def start_oak_transfer(
         )
 
     if add_to_build_que:
-        sess_name = acq_path.parent.name
+        sess_name = sess_path.name
         queue_sentinel_path = oak_target / "build_queue" / sess_name
         try:
             if not queue_sentinel_path.exists():

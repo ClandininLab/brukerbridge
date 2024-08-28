@@ -327,8 +327,8 @@ def touch(fp):
 
 
 def format_acq_path(acq_path: Path) -> str:
-    user_name = acq_path.parent.parent.name
-    return f"{user_name}: {acq_path.parent.name}/{acq_path.name}"
+    user_name = acq_path.parts[1]
+    return f"{user_name}: {'/'.join(acq_path.parts[2:])}"
 
 
 @contextmanager

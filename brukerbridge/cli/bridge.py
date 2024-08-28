@@ -342,7 +342,7 @@ def main(root_dir: str):
 
 def acq_config(acquisition_path: Path) -> dict:
     """Look up the user config for this acquisition"""
-    user_name = acquisition_path.parent.parent.name
+    user_name = acquisition_path.parts[1]
     with open(f"{package_path()}/users/{user_name}.json", "r") as handle:
         return json.load(handle)
 
@@ -377,8 +377,9 @@ def ripping_complete(acquisition_path: Path) -> bool:
 def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[Path]:
     """Searches for acquisitions under ROOT_DIR marked for processing
 
-    A marked acquisition is a directory suffixed by '__queue__' or
-    '__lowqueue__' that contains a valid PraireView XML file
+    A marked acquisition is a directory containing a valid PraireView PVScan
+    XMl that is contained in a session dir suffixed by '__queue__'
+    or '__lowqueue__'
 
     Those suffixed by '__lowqueue__' are added to the back of the queue,
     although in practice lowqueue is deprecated since acquisitions are
@@ -395,27 +396,30 @@ def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[
       marked_acquisitions - [Path]
 
     """
-    # recursive glob is expensive due to the large number of .tiffs, so marked
-    # directories must be at fixed depth
-    marked_dirs = glob(f"{root_dir}/*/*__queue__") + glob(f"{root_dir}/*/*__lowqueue__")
-    marked_dirs = [Path(m).resolve() for m in marked_dirs]
-    logger.debug("Marked dirs: %s", marked_dirs)
+    marked_sessions = glob(f"{root_dir}/*/*__queue__") + glob(
+        f"{root_dir}/*/*__lowqueue__"
+    )
+    marked_sessions = [Path(m).resolve() for m in marked_sessions]
+    logger.debug("Marked dirs: %s", marked_sessions)
 
     marked_acquisitions = []
 
-    for marked_dir in marked_dirs:
-        # users who have provided a config file
-        user_names = [f.split(".")[0] for f in os.listdir(package_path() / "users")]
-
-        # check that marked dirs have a user config
-        if not marked_dir.parent.name in user_names:
+    for session_path in marked_sessions:
+        try:
+            with open(
+                f"{package_path()}/users/{session_path.parent.name}.json", "r"
+            ) as handle:
+                user_config = json.load(handle)
+        except FileNotFoundError:
             logging.error(
-                "Cannot process marked directory due to missing user config: %s",
-                marked_dir,
+                "Cannot process marked session due to missing user config: %s",
+                session_path,
             )
             continue
 
-        for acq_path in marked_dir.iterdir():
+        search_depth = user_config.get("depth", default=1)
+
+        for acq_path in session_path.glob("/".join(("*",) * search_depth)):
             # ignore metadata files a session dir might contain
             if not acq_path.is_dir():
                 continue
