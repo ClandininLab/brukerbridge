@@ -1,0 +1,5 @@
+{
+    "oak_target": "X:/data/berger/imaging/import",
+    "convert_to": "nii",
+    "depth": 3
+}
