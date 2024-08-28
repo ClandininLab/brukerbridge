@@ -417,7 +417,7 @@ def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[
             )
             continue
 
-        search_depth = user_config.get("depth", default=1)
+        search_depth = user_config.get("depth", 1)
 
         for acq_path in session_path.glob("/".join(("*",) * search_depth)):
             # ignore metadata files a session dir might contain
