@@ -66,6 +66,10 @@ def tiff_to_nii(xml_file: str):
     # max_timepoints = 3384 #this number comes from Luke's data where the memory is sufficient to process the nii file. The other dimensions matter too in terms of overall size (256 x 128 x 49), but for now I'll assume the other dims are similar
     max_timepoints = 500  # still memory error so going to 1000
 
+    # ##add condition for anat to decrease the timepoints since the resolution is higher
+    # if "anat" in xml_file:
+    #     max_timepoints = 10
+
     # this will give all the starting points for the different broken up nii files
     timepoint_starts = list(range(0, num_timepoints, max_timepoints))
     logger.debug("%s, timepoint_starts: %s", xml_file, timepoint_starts)
