@@ -3,5 +3,6 @@
     "convert_to": "nii",
     "email": "brezovec@stanford.edu",
     "add_to_build_que": "True",
-    "transfer_fictrac": "True"
+    "transfer_fictrac": "True",
+    "depth": 3
 }
