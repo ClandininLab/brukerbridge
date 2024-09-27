@@ -67,8 +67,8 @@ def tiff_to_nii(xml_file: str):
     max_timepoints = 500  # still memory error so going to 1000
 
     # ##add condition for anat to decrease the timepoints since the resolution is higher
-    # if "anat" in xml_file:
-    #     max_timepoints = 10
+    if "anat" in xml_file:
+        max_timepoints = 10
 
     # this will give all the starting points for the different broken up nii files
     timepoint_starts = list(range(0, num_timepoints, max_timepoints))
