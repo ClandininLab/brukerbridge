@@ -89,7 +89,7 @@ def start_oak_transfer(
     t_d = time.time() - start_time
 
     try:
-        if transferred_gb <= acq_size_gb:
+        if transferred_gb < acq_size_gb:
             logger.warning(
                 "%s is %.2fGB but only %.2fGB was uploaded (%.1f MB/s). This probably means that existing files of the same name were already on oak.",
                 format_acq_path(acq_path),
