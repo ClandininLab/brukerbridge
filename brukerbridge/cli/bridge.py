@@ -45,9 +45,9 @@ SUPPORTED_PRAIREVIEW_VERSION = "5.5.64.600"
 RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.5.64.600\Prairie View\Utilities\Image-Block Ripping Utility.exe"
 
 # max concurrent processes
-MAX_RIPPERS = 2
+MAX_RIPPERS = 1
 MAX_TIFF_WORKERS = 1
-MAX_OAK_WORKERS = 2
+MAX_OAK_WORKERS = 1
 
 
 # set default root dir in __main__.py,override as CLI arg
@@ -372,8 +372,35 @@ def warn_deprecated_config_options(session_path: Path):
 
 def ripping_complete(acquisition_path: Path) -> bool:
     """Checks whether raw data has been deleted, indicative of ripping halting"""
-    return len(glob(f"{acquisition_path}/*_RAWDATA_*")) == 0
 
+    # For Voltage Recording, the VRFilelist.txt gets deleted, while the voltage raw data is not reliably deleted (not on current BrukerBridge). MC 20241118
+    return len(glob(f"{acquisition_path}/*_RAWDATA_*")) + len(glob(f"{acquisition_path}/*_VoltageRecording_[0-9][0-9][0-9]_VRFilelist.txt")) == 0
+
+    #### Alternative version for checking Voltage Recording MC 20241118
+    # # Raw images still remaining
+    # if len(glob(f"{acquisition_path}/*_RAWDATA_*")) > 0:
+    #     return False
+    # # Raw images done
+    # else:
+    #     # No Voltage Recording or Voltage Recording Processed and raw file removed (sometimes raw file remains)
+    #     if len(glob(f"{acquisition_path}/*_VoltageRecording_[0-9][0-9][0-9]")) == 0:
+    #         logger.debug("No Voltage Recording raw files detected after images ripped. Ripping complete")
+    #         return True
+    #     # Voltage recording raw file exists
+    #     else:
+    #         vr_csvs = sorted(glob(f"{acquisition_path}/*_VoltageRecording_[0-9][0-9][0-9].csv"))
+    #         if len(vr_csvs) == 0:
+    #             logger.debug("Voltage Recording raw file exists, but no VR CSV has been started yet.")
+    #             return False  
+    #         max_update_interval = 30 # seconds maximum between csv file update by ripper (assumed)
+    #         time_now = time.time()
+    #         for vr_csv_fn in vr_csvs:
+    #             seconds_since_last_update = time_now - os.path.getmtime(vr_csv_fn)
+    #             if seconds_since_last_update <= max_update_interval:
+    #                 logger.debug(f"{vr_csv_fn.split(os.path.sep)[-1]} still being ripped (last updated {seconds_since_last_update} seconds ago).")
+    #                 return False
+    #         logger.debug(f"All Voltage Recording CSVs haven't been updated in {max_update_interval} seconds. Ripping complete.")
+    #         return True
 
 def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[Path]:
     """Searches for acquisitions under ROOT_DIR marked for processing
