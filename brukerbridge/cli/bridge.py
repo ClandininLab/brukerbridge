@@ -45,9 +45,9 @@ SUPPORTED_PRAIREVIEW_VERSION = "5.5.64.600"
 RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.5.64.600\Prairie View\Utilities\Image-Block Ripping Utility.exe"
 
 # max concurrent processes
-MAX_RIPPERS = 1
+MAX_RIPPERS = 2
 MAX_TIFF_WORKERS = 1
-MAX_OAK_WORKERS = 1
+MAX_OAK_WORKERS = 2
 
 
 # set default root dir in __main__.py,override as CLI arg
