@@ -236,13 +236,13 @@ def convert_tiff_collections_to_nii_split(directory):
                     # NOTE: berger 2024/8/1 this was commented out for unknown
                     # reason by bella on 2021/07/02. I don't see any reason not
                     # to reenable it
-                    ##This needs to be removed for split to work properly if it fails partway since it makes many nii files
-                    # for item in os.listdir(directory):
-                    #     if item.endswith(".nii"):
-                    #         logger.warning(
-                    #             "skipping nii containing folder (nilpotency): %s",
-                    #             directory,
-                    #         )
-                    #         break
-                    # else:
-                    #     tiff_to_nii(new_path)
+                    #This needs to be removed for split to work properly if it fails partway since it makes many nii files
+                    for item in os.listdir(directory):
+                        if item.endswith(".nii"):
+                            logger.warning(
+                                "skipping nii containing folder (nilpotency): %s",
+                                directory,
+                            )
+                            break
+                    else:
+                        tiff_to_nii(new_path)
