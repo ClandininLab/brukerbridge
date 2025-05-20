@@ -31,6 +31,7 @@ logger = logging.getLogger()
 LOG_DIR = "C:/Users/User/logs"
 
 SUFFIX_WHITELIST = (
+    ".nii.gz"
     ".nii",
     ".csv",
     ".xml",
@@ -158,7 +159,7 @@ def main(root_dir: str):
                     config = acq_config(acq_path)
                     conversion_target = config["convert_to"]
 
-                    if conversion_target == "nii":
+                    if conversion_target == "nii" or conversion_target == "nii.gz":
                         if parse_malformed_json_bool(config.get("split", False)):
                             tiff_futures[acq_path] = tiff_executor.submit(
                                 worker_process,
@@ -172,6 +173,7 @@ def main(root_dir: str):
                                 convert_tiff_collections_to_nii,
                                 log_queue,
                                 str(acq_path),
+                                conversion_target == "nii.gz",
                             )
 
                         # more precisely, a process has been submitted to the

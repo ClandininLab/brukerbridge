@@ -9,7 +9,7 @@ from skimage import io
 logger = logging.getLogger(__name__)
 
 
-def tiff_to_nii(xml_file: str):
+def tiff_to_nii(xml_file: str, gzip:bool=False):
     aborted = False
     data_dir, _ = os.path.split(xml_file)
 
@@ -149,6 +149,8 @@ def tiff_to_nii(xml_file: str):
 
         aff = np.eye(4)
         save_name = xml_file[:-4] + "_channel_{}".format(channel + 1) + ".nii"
+        if gzip:
+            save_name += ".gz"
         if isVolumeSeries:
             img = nib.nifti1.Nifti1Image(
                 image_array, aff
@@ -172,13 +174,13 @@ def get_num_channels(sequence):
     return len(files)
 
 
-def convert_tiff_collections_to_nii(directory):
+def convert_tiff_collections_to_nii(directory, gzip=False):
     for item in os.listdir(directory):
         new_path = directory + "/" + item
 
         # Check if item is a directory
         if os.path.isdir(new_path):
-            convert_tiff_collections_to_nii(new_path)
+            convert_tiff_collections_to_nii(new_path, gzip=gzip)
 
         # If the item is a file
         else:
@@ -192,11 +194,11 @@ def convert_tiff_collections_to_nii(directory):
                     # This is useful if rebooting the pipeline due to some error, and
                     # not wanting to take the time to re-create the already made niis
                     for item in os.listdir(directory):
-                        if item.endswith(".nii"):
+                        if item.endswith(".nii") or item.endswith(".nii.gz"):
                             logger.warning(
                                 "skipping nii containing folder (nilpotency): %s",
                                 directory,
                             )
                             break
                     else:
-                        tiff_to_nii(new_path)
+                        tiff_to_nii(new_path, gzip=gzip)
