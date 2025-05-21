@@ -28,7 +28,7 @@ You must specify your config as a json file which shares a name with your imagin
 Within the json the following fields are mandatory:
 
 - `oak_target`: string. absolute path to where you want your imagery to end up on oak. must start with `X:` which is the drive oak is mapped to on the brukerbridge computer
--  `convert_to`: string. either `nii` or `tiff`. you almost certainly want to use `nii`.  tiff conversion is feebly supported, for now.
+-  `convert_to`: string. `nii.gz`, `nii`, or `tiff`. you almost certainly want to use `nii.gz` or `nii`.  tiff conversion is feebly supported, for now. `nii.gz` is favored for storage savings.
 
 Optional fields:
 - `add_to_build_que`: bool. legacy. it's a brainsss thing.
@@ -45,7 +45,7 @@ Here's a minimal example:
 ```json
 {
     "oak_target": "X:/data/levitsky/imaging/import",
-    "convert_to": "nii"
+    "convert_to": "nii.gz"
 }
 ```
 
