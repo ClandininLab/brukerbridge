@@ -41,13 +41,17 @@ SUFFIX_WHITELIST = (
 )
 
 # this is set by what Image-Block Ripping utility is used and can be easily changed
-SUPPORTED_PRAIREVIEW_VERSION = "5.5.64.600"
+# SUPPORTED_PRAIREVIEW_VERSION = "5.5.64.600"
 
-RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.5.64.600\Prairie View\Utilities\Image-Block Ripping Utility.exe"
+# RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.5.64.600\Prairie View\Utilities\Image-Block Ripping Utility.exe"
+
+SUPPORTED_PRAIREVIEW_VERSION = "5.8.64.800"
+
+RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.8.64.800\Prairie View\Utilities\Image-Block Ripping Utility.exe"
 
 # max concurrent processes
 MAX_RIPPERS = 2
-MAX_TIFF_WORKERS = 1
+MAX_TIFF_WORKERS = 2
 MAX_OAK_WORKERS = 2
 
 
@@ -476,6 +480,12 @@ def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[
                     "Error sentinel suffix appended to filename %s. No further attempts to process this acquisition will be made until the error sentinel is removed",
                     format_acq_path(acq_path),
                 )
+            # else:
+            #     marked_acquisitions.append(acq_path)
+            #     logger.warning(
+            #         "Valid xml not found. Ripping might have been completed elsewhere for PV5.8. Proceeding cautiously... (Minseung)",
+            #         format_acq_path(acq_path),
+            #     )
 
     return marked_acquisitions
 

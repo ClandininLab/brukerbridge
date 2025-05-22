@@ -2,5 +2,6 @@
     "oak_target": "X:/data/Tim/ImagingData/imports",
     "convert_to": "nii",
     "email": "currier@stanford.edu",
-    "add_to_build_que": "False"
+    "add_to_build_que": "False",
+    "split": "True"
 }

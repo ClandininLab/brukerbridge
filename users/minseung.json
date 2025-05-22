@@ -1,6 +1,6 @@
 {
     "oak_target": "X:/data/minseung/ImagingData/Bruker/imports",
-    "convert_to": "nii",
+    "convert_to": "nii.gz",
     "email": "minseung@stanford.edu",
     "add_to_build_que": "False"
 }
