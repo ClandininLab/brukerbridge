@@ -31,7 +31,7 @@ logger = logging.getLogger()
 LOG_DIR = "C:/Users/User/logs"
 
 SUFFIX_WHITELIST = (
-    ".nii.gz"
+    ".nii.gz",
     ".nii",
     ".csv",
     ".xml",
