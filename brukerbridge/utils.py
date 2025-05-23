@@ -1,14 +1,9 @@
 import hashlib
 import inspect
-import json
 import logging
 import os
-import smtplib
-import sys
 from contextlib import contextmanager
 from datetime import datetime
-from email.mime.text import MIMEText
-from functools import wraps
 from pathlib import Path
 from time import time
 from typing import Optional, Tuple
@@ -156,15 +151,6 @@ def print_progress_table(
         print(full_string, flush=True)
 
 
-def progress_bar(iteration, total, length, fill="#"):
-    if total == 0:
-        total = 1
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + "-" * (length - filledLength)
-    bar_string = f"{bar}"
-    return bar_string
-
-
 def get_num_files(directory):
     num_files = 0
     for _, _, files in os.walk(directory):
@@ -193,132 +179,6 @@ def get_checksum(filename):
         bytes = f.read()  # read file as bytes
         readable_hash = hashlib.md5(bytes).hexdigest()
     return readable_hash
-
-
-def get_json_data(file_path):
-    with open(file_path) as f:
-        data = json.load(f)
-    return data
-
-
-def send_email(subject="", message="", recipient="brezovec@stanford.edu"):
-    """Sends emails!
-
-    Parameters
-    ----------
-    subject: email subject heading (str)
-    message: body of text (str)
-
-    Returns
-    -------
-    Nothing."""
-    print("Sending email to {} ({})".format(recipient, subject))
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
-    server.login("python.notific@gmail.com", "uxnglqrswphwtdsf")
-
-    msg = MIMEText(message)
-    msg["Subject"] = subject
-
-    server.sendmail(recipient, recipient, msg.as_string())
-    server.quit()
-
-
-def timing(f):
-    """Wrapper function to time how long functions take (and print function name)."""
-
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        start = time()
-        print("\nFUNCTION CALL: {}".format(f.__name__))
-        sys.stdout.flush()
-        result = f(*args, **kwargs)
-        end = time()
-        duration = end - start
-
-        # Make units nice (originally in seconds)
-        if duration < 1:
-            duration = duration * 1000
-            suffix = "ms"
-        elif duration < 60:
-            duration = duration
-            suffix = "sec"
-        elif duration < 3600:
-            duration = duration / 60
-            suffix = "min"
-        else:
-            duration = duration / 3600
-            suffix = "hr"
-
-        print(
-            "FUNCTION {} done. DURATION: {:.2f} {}".format(f.__name__, duration, suffix)
-        )
-        sys.stdout.flush()
-        return result
-
-    return wrapper
-
-
-class Logger_stdout(object):
-    def __init__(self, full_log_file):
-        # self.terminal = sys.stdout
-        # log_folder = 'C:/Users/User/Desktop/dataflow_logs'
-        # log_file = 'dataflow_log_' + strftime("%Y%m%d-%H%M%S") + '.txt'
-        # self.full_log_file = os.path.join(log_folder, log_file)
-        self.log = open(full_log_file, "a")
-        self.log = sys.stdout
-
-    def write(self, message):
-        #  self.terminal.write(message)
-        # self.terminal.write('boo')
-        # self.log.write('boo2')
-        self.log.write(message)
-
-    def flush(self):
-        # this flush method is needed for python 3 compatibility.
-        # this handles the flush command by doing nothing.
-        # you might want to specify some extra behavior here.
-        pass
-
-
-# class Logger_stdout(object):
-#     def __init__(self, full_log_file):
-#         self.terminal = sys.stdout
-#         # log_folder = 'C:/Users/User/Desktop/dataflow_logs'
-#         # log_file = 'dataflow_log_' + strftime("%Y%m%d-%H%M%S") + '.txt'
-#         # self.full_log_file = os.path.join(log_folder, log_file)
-#         self.log = open(full_log_file, "a")
-
-#     def write(self, message):
-#         self.terminal.write(message)
-#         #self.terminal.write('boo')
-#         #self.log.write('boo2')
-#         self.log.write(message)
-
-#     def flush(self):
-#         #this flush method is needed for python 3 compatibility.
-#         #this handles the flush command by doing nothing.
-#         #you might want to specify some extra behavior here.
-#         pass
-
-
-class Logger_stderr(object):
-    def __init__(self, full_log_file):
-        self.terminal = sys.stderr
-        # log_folder = 'C:/Users/User/Desktop/dataflow_error'
-        # log_file = 'dataflow_log_' + strftime("%Y%m%d-%H%M%S") + '.txt'
-        # self.full_log_file = os.path.join(log_folder, log_file)
-        self.log = open(full_log_file, "a")
-
-    def write(self, message):
-        self.terminal.write(message)
-        self.log.write(message)
-
-    def flush(self):
-        # this flush method is needed for python 3 compatibility.
-        # this handles the flush command by doing nothing.
-        # you might want to specify some extra behavior here.
-        pass
 
 
 def touch(fp):
