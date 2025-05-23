@@ -252,7 +252,7 @@ def write_nifti(xml_path: Path, channel: int):
 
         for frame in frames:
             # NOTE: the net result of this transposition and the frame
-            # generators is Fortra style column-major order
+            # generators is Fortran style column-major order
             for slc in frame.T:
                 img_fh.write(slc.tobytes())
 
