@@ -35,7 +35,16 @@ test = [
      "pytest"
 ]
 
-[tool.isort]
+[tool.pytest.ini_options]
+addopts = "--basetemp=D: -l -ra"
+markers = [
+        "darwin",
+        "linux",
+        "win32"
+]
+
+
+[tools.isort]
 known_first_party=["brukerbridge"]
 
 [tool.pyright]

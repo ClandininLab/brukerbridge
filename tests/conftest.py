@@ -1,6 +1,7 @@
 """ Shared fixtures and test control flow logic
 """
 
+import sys
 import json
 import shutil
 from glob import glob
@@ -14,7 +15,9 @@ from brukerbridge.legacy.tiff_to_nii import convert_tiff_collections_to_nii
 from brukerbridge.legacy.tiff_to_nii_split import \
     convert_tiff_collections_to_nii_split
 
+
 DATA_DRIVE = "D:"
+PLATFORMS = set("darwin linux win32".split())
 
 #  ===========================================================
 #  ================ TEST CONTROL FLOW LOGIC ==================
@@ -39,6 +42,14 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "slow" in item.keywords:
             item.add_marker(skip_slow)
+
+
+def pytest_runtest_setup(item):
+    supported_platforms = PLATFORMS.intersection(mark.name for mark in item.iter_markers())
+    plat = sys.platform
+    if supported_platforms and plat not in supported_platforms:
+        pytest.skip(f"cannot run on platform {plat}")
+
 
 
 #  ============================================
@@ -146,14 +157,14 @@ def monolithic_sp_target(size, channel, test_data_path):
 @pytest.fixture
 def monolithic_vol_target(size, channel, test_data_path):
     matching_paths = glob(
-        test_data_path / f"conversion_targets/_{size}/*_channel_{channel}.nii"
+        test_data_path / f"conversion_targets/vol_{size}/*_channel_{channel}.nii"
     )
     assert len(matching_paths) == 1
     return nib.load(matching_paths[0])
 
 
 @pytest.fixture
-def split_sp_targests(single_plane_acquisition):
+def split_sp_targets(single_plane_acquisition):
     pass
 
 

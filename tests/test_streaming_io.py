@@ -6,7 +6,7 @@ import pytest
 
 from brukerbridge.io import write_nifti
 
-
+@pytest.mark.win32
 @pytest.mark.usefixtures("monolithic_nii_config")
 def test_monolithic_sp_data_block(sp_acq_xml_path, channel, monolithic_sp_target):
     write_nifti(sp_acq_xml_path, channel)
@@ -17,12 +17,12 @@ def test_monolithic_sp_data_block(sp_acq_xml_path, channel, monolithic_sp_target
 
     assert test_img.get_fdata() == monolithic_sp_target.get_fdata()
 
-
+@pytest.mark.win32
 @pytest.mark.usefixtures("monolithic_nii_config")
 def test_monolithic_volume_data_block(volume_acquisition):
     pass
 
-
+@pytest.mark.win32
 @pytest.mark.usefixtures("monolithic_nii_config")
 def test_monolithic_sp_header(sp_acq_xml_path, channel, monolithic_sp_target):
     write_nifti(sp_acq_xml_path, channel)
@@ -33,27 +33,27 @@ def test_monolithic_sp_header(sp_acq_xml_path, channel, monolithic_sp_target):
 
     # TODO: header assertion
 
-
+@pytest.mark.win32
 @pytest.mark.usefixtures("monolithic_nii_config")
 def test_monolithic_volume_data_header(volume_acquisition):
     pass
 
-
+@pytest.mark.win32
 @pytest.mark.usefixtures("split_nii_config")
 def test_split_single_plane_data_block(single_plane_acquisition):
     pass
 
-
+@pytest.mark.win32
 @pytest.mark.usefixtures("split_nii_config")
 def test_split_volume_data_block(volume_acquisition):
     pass
 
-
+@pytest.mark.win32
 @pytest.mark.usefixtures("split_nii_config")
 def test_split_single_plane_header(single_plane_acquisition):
     pass
 
-
+@pytest.mark.win32
 @pytest.mark.usefixtures("split_nii_config")
 def test_split_volume_data_header(volume_acquisition):
     pass
