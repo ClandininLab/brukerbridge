@@ -4,4 +4,4 @@
 @echo logs from previous days are renamed
 :: I resent this but there is some sort of environment running it elsewhere and I cannot be asked
 cd /d "C:\Users\User\src\brukerbridge"
-python -m brukerbridge >nul 2>&1
+py -3 -m brukerbridge >nul 2>&1
