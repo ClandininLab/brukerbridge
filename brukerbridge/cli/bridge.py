@@ -40,11 +40,6 @@ SUFFIX_WHITELIST = (
     "hdf5",
 )
 
-# this is set by what Image-Block Ripping utility is used and can be easily changed
-# SUPPORTED_PRAIREVIEW_VERSION = "5.5.64.600"
-
-# RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.5.64.600\Prairie View\Utilities\Image-Block Ripping Utility.exe"
-
 SUPPORTED_PRAIREVIEW_VERSION = "5.8.64.800"
 
 RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.8.64.800\Prairie View\Utilities\Image-Block Ripping Utility.exe"
@@ -380,7 +375,15 @@ def ripping_complete(acquisition_path: Path) -> bool:
     """Checks whether raw data has been deleted, indicative of ripping halting"""
 
     # For Voltage Recording, the VRFilelist.txt gets deleted, while the voltage raw data is not reliably deleted (not on current BrukerBridge). MC 20241118
-    return len(glob(f"{acquisition_path}/*_RAWDATA_*")) + len(glob(f"{acquisition_path}/*_VoltageRecording_[0-9][0-9][0-9]_VRFilelist.txt")) == 0
+    return (
+        len(glob(f"{acquisition_path}/*_RAWDATA_*"))
+        + len(
+            glob(
+                f"{acquisition_path}/*_VoltageRecording_[0-9][0-9][0-9]_VRFilelist.txt"
+            )
+        )
+        == 0
+    )
 
     #### Alternative version for checking Voltage Recording MC 20241118
     # # Raw images still remaining
@@ -397,7 +400,7 @@ def ripping_complete(acquisition_path: Path) -> bool:
     #         vr_csvs = sorted(glob(f"{acquisition_path}/*_VoltageRecording_[0-9][0-9][0-9].csv"))
     #         if len(vr_csvs) == 0:
     #             logger.debug("Voltage Recording raw file exists, but no VR CSV has been started yet.")
-    #             return False  
+    #             return False
     #         max_update_interval = 30 # seconds maximum between csv file update by ripper (assumed)
     #         time_now = time.time()
     #         for vr_csv_fn in vr_csvs:
@@ -407,6 +410,7 @@ def ripping_complete(acquisition_path: Path) -> bool:
     #                 return False
     #         logger.debug(f"All Voltage Recording CSVs haven't been updated in {max_update_interval} seconds. Ripping complete.")
     #         return True
+
 
 def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[Path]:
     """Searches for acquisitions under ROOT_DIR marked for processing
