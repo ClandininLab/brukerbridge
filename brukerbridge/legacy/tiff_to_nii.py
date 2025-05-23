@@ -9,7 +9,7 @@ from skimage import io
 logger = logging.getLogger(__name__)
 
 
-def tiff_to_nii(xml_file: str, gzip:bool=False):
+def tiff_to_nii(xml_file: str, gzip: bool = False):
     aborted = False
     data_dir, _ = os.path.split(xml_file)
 
