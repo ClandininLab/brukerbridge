@@ -1,20 +1,19 @@
 """ Shared fixtures and test control flow logic
 """
 
-import sys
 import json
 import shutil
+import sys
 from glob import glob
 
 import nibabel as nib
+import numpy as np
 import pytest
-# in 3.9 and above files is provided by importlib.resources
-from importlib_resources import files
-
 from brukerbridge.legacy.tiff_to_nii import convert_tiff_collections_to_nii
 from brukerbridge.legacy.tiff_to_nii_split import \
     convert_tiff_collections_to_nii_split
-
+# in 3.9 and above files is provided by importlib.resources
+from importlib_resources import files
 
 DATA_DRIVE = "D:"
 PLATFORMS = set("darwin linux win32".split())
@@ -45,11 +44,12 @@ def pytest_collection_modifyitems(config, items):
 
 
 def pytest_runtest_setup(item):
-    supported_platforms = PLATFORMS.intersection(mark.name for mark in item.iter_markers())
+    supported_platforms = PLATFORMS.intersection(
+        mark.name for mark in item.iter_markers()
+    )
     plat = sys.platform
     if supported_platforms and plat not in supported_platforms:
         pytest.skip(f"cannot run on platform {plat}")
-
 
 
 #  ============================================
@@ -171,3 +171,79 @@ def split_sp_targets(single_plane_acquisition):
 @pytest.fixture
 def split_vol_targets(volume_acquisition):
     pass
+
+
+# NOTE: I have decided it will just be simplest to manually denote all shape test cases
+@pytest.fixture(
+    params=[
+        (16, 16, 16),
+        (16, 16, 16, 16),
+        (16, 17, 18),
+        (16, 17, 18, 19),
+        (8, 16, 16),
+        (16, 8, 16),
+        (16, 16, 8),
+        (8, 16, 16, 16),
+        (16, 8, 16, 16),
+        (16, 16, 8, 16),
+        (16, 16, 16, 8),
+        (1, 16, 16),
+        (16, 1, 16),
+        (16, 16, 1),
+        (1, 16, 16, 16),
+        (16, 1, 16, 16),
+        (16, 16, 1, 16),
+        (16, 16, 16, 1),
+    ]
+)
+def img_shape(request):
+    return request.param
+
+
+@pytest.fixture
+def img_arr(img_shape):
+    return np.arange(np.prod(img_shape), dtype=np.uint16).reshape(img_shape)
+
+
+@pytest.fixture
+def header(img_shape):
+    hdr = nib.nifti1.Nifti1Header()
+    hdr.set_data_dtype(np.uint16)
+    hdr.set_data_shape(img_shape)
+    hdr.set_sform(np.eye(4))
+
+    return hdr
+
+
+@pytest.fixture
+def frame_gen(img_arr):
+    def _frame_gen():
+        # 3d
+        if len(img_arr.shape) == 3:
+            for t_idx in range(img_arr.shape[2]):
+                yield img_arr[:, :, t_idx]
+        # 4d
+        else:
+            for t_idx in range(img_arr.shape[3]):
+                for z_idx in range(img_arr.shape[2]):
+                    yield img_arr[:, :, z_idx, t_idx]
+
+    return _frame_gen()
+
+
+@pytest.fixture
+def buffered_nii(img_arr):
+    aff = np.eye(4)
+    return nib.nifti1.Nifti1Image(img_arr, aff)
+
+
+@pytest.fixture
+def streaming_nii_path(tmp_path):
+    return tmp_path / "streaming.nii"
+
+
+@pytest.fixture
+def buffered_nii_path(tmp_path, buffered_nii):
+    _buffered_path = tmp_path / "buffered.nii"
+    buffered_nii.to_filename(_buffered_path)
+    return _buffered_path

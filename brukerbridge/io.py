@@ -2,11 +2,12 @@ import json
 import logging
 import shutil
 from pathlib import Path
-from typing import Dict, Tuple, Union
+from typing import Dict, Iterator, Tuple, Union
 from xml.etree import ElementTree
 
 import nibabel as nib
 import numpy as np
+from numpy.typing import NDArray
 from PIL import Image
 
 from brukerbridge.utils import format_acq_path, package_path
@@ -118,6 +119,7 @@ def parse_acquisition_resolution(xml_path: Path) -> Tuple[float, float, float]:
 
 
 def single_plane_acquisition_frame_gen(xml_path: Path, channel: int):
+    """Generator over frames (in time) for ripped Bruker data"""
     acq_path = xml_path.parent
     acq_root = ElementTree.parse(xml_path).getroot()
 
@@ -147,6 +149,7 @@ def single_plane_acquisition_frame_gen(xml_path: Path, channel: int):
 
 
 def volume_acquisition_frame_gen(xml_path: Path, channel: int):
+    """Generator over frames (in z and time) for ripped Bruker data"""
     acq_path = xml_path.parent
     acq_root = ElementTree.parse(xml_path).getroot()
 
@@ -200,6 +203,7 @@ def volume_acquisition_frame_gen(xml_path: Path, channel: int):
         frames = sorted(frames, key=lambda frame: int(frame.attrib["index"]))
 
         if len(frames) < acq_shape[2]:
+
             logger.warning(
                 "%s: volume %s of %s had %s planes of expected %s. Discarding remaining volumes",
                 format_acq_path(acq_path),
@@ -251,6 +255,22 @@ def write_nifti(xml_path: Path, channel: int):
         assert img_fh.tell() == hdr.get_data_offset()
 
         for frame in frames:
+            # NOTE: the net result of this transposition and the frame
+            # generators is Fortran style column-major order
+            for slc in frame.T:
+                img_fh.write(slc.tobytes())
+
+
+def write_nifti_streaming(
+    header: nib.nifti1.Nifti1Header, frame_gen: Iterator[NDArray], output_path: Path
+):
+    with open(output_path, "wb") as img_fh:
+        header.write_to(img_fh)
+
+        img_fh.seek(header.get_data_offset())
+        assert img_fh.tell() == header.get_data_offset()
+
+        for frame in frame_gen:
             # NOTE: the net result of this transposition and the frame
             # generators is Fortran style column-major order
             for slc in frame.T:
