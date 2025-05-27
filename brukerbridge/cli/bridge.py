@@ -40,10 +40,9 @@ SUFFIX_WHITELIST = (
     "hdf5",
 )
 
-PRARIEVIEW_VERSION_RIPPER_DICT = {
-    "5.5.64.600": r"C:\Program Files\Prairie 5.5.64.600\Prairie View\Utilities\Image-Block Ripping Utility.exe",
-    "5.8.64.800": r"C:\Program Files\Prairie 5.8.64.800\Prairie View\Utilities\Image-Block Ripping Utility.exe"
-}
+SUPPORTED_PRAIREVIEW_VERSION = "5.8.64.800"
+
+RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.8.64.800\Prairie View\Utilities\Image-Block Ripping Utility.exe"
 
 # max concurrent processes
 MAX_RIPPERS = 2
@@ -135,17 +134,15 @@ def main(root_dir: str):
                         break
 
                     acq_path = rip_queue.popleft()
-                    pv_version = get_PV_version(acq_path)
-                    ripper_executable = PRARIEVIEW_VERSION_RIPPER_DICT[pv_version]
 
                     # NOTE: on windows args is converted to a string anyways, no need to parse
                     # NOTE: double quotes on acq_path necessary to handle spaces.
                     ripper_processes[acq_path] = subprocess.Popen(
-                        f'{ripper_executable} -RipToInputDirectory -IncludeSubFolders -AddRawFileWithSubFolders "{acq_path}" -Convert -DeleteRaw'
+                        f'{RIPPER_EXECUTABLE} -RipToInputDirectory -IncludeSubFolders -AddRawFileWithSubFolders "{acq_path}" -Convert -DeleteRaw'
                     )
 
                     logger.debug(
-                        f"Spawned ripper ({pv_version}) process for {format_acq_path(acq_path)}"
+                        "Spawned ripper process for %s", format_acq_path(acq_path)
                     )
                     logger.debug("Ripper pid %s", ripper_processes[acq_path].pid)
 
@@ -496,36 +493,6 @@ def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[
 
     return marked_acquisitions
 
-def get_PV_version(acquisition_path: Path) -> str:
-    """
-    Gets PrarieView version from the PVScan XML file in the acquisition_path
-    """
-    for xml_file in glob(f"{acquisition_path}/*.xml"):
-        try:
-            tree = ElementTree.parse(xml_file)
-            root = tree.getroot()
-
-            return root.attrib["version"]
-
-        except ElementTree.ParseError:
-            logger.debug(
-                "Unparseable XML file %s in acquisition %s",
-                Path(xml_file).name,
-                acquisition_path,
-                exc_info=True,
-            )
-        except (KeyError, AssertionError):
-            logger.debug(
-                "XML %s does not have the expected structure. Are you sure you've got the right files?",
-                xml_file,
-                exc_info=True,
-            )
-    else:
-        logger.error(
-            "Missing or unparseable PVScan XML file in acquisition %s. Cannot get PV version.",
-            acquisition_path,
-        )
-        return ""
 
 def contains_valid_xml(acquisition_path: Path) -> bool:
     """Checks that acquisition dir contains a parsable PVScan XML file made with the
@@ -536,7 +503,7 @@ def contains_valid_xml(acquisition_path: Path) -> bool:
             tree = ElementTree.parse(xml_file)
             root = tree.getroot()
 
-            if root.attrib["version"] not in PRARIEVIEW_VERSION_RIPPER_DICT.keys():
+            if root.attrib["version"] != SUPPORTED_PRAIREVIEW_VERSION:
                 logger.error(
                     "XML created by unsupported version of PraireView: %s",
                     xml_file,
