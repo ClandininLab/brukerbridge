@@ -173,6 +173,32 @@ def split_vol_targets(volume_acquisition):
     pass
 
 
+#  =============================================
+#  ====== fixtures for XML parsing tests  ======
+#  =============================================
+
+
+def get_matching_test_acqs(
+    pv_version, volume_series, multi_page_tiff, bidir_z_stroke, n_channels, complete
+):
+    """List test acquisitions matching params
+
+    Args:
+      pv_version: eg 'PV5.8' - str
+      volume_series: True for vol series, False for single plane - bool
+      multi_page_tiff: True for multi page tiff, False for single page - bool
+      bidir_z_stroke: True for bidir, False for single dir strong - bool
+      n_channels - int
+      complete: scan complete - bool
+    """
+    pass
+
+
+#  ======================================================
+#  ====== fixtures for streaming io veracity tests ======
+#  ======================================================
+
+
 # NOTE: I have decided it will just be simplest to manually denote all shape test cases
 @pytest.fixture(
     params=[
