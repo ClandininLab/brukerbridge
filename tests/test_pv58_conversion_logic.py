@@ -2,7 +2,7 @@
 """
 import pytest
 
-from brukerbridge.conversion.common import AcquisitionType, TiffPageFormat
+from brukerbridge.constants import AcquisitionType, TiffPageFormat
 from brukerbridge.conversion.pv58 import (
     parse_acquisition_channel_info, parse_acquisition_is_bidirectional,
     parse_acquisition_resolution, parse_acquisition_shape,
@@ -86,6 +86,13 @@ def test_parse_acquisition_channel_info_2ch(two_channel_test_acq_xml_path):
 
 def test_parse_acquisition_channel_info_3ch(three_channel_test_acq_xml_path):
     assert len(parse_acquisition_channel_info(three_channel_test_acq_xml_path)) == 3
+
+
+def test_parse_acquisition_channel_info_single_image(single_image_test_acq_xml_path):
+    """channel info unspecified for single images so just check it runs"""
+    assert isinstance(
+        parse_acquisition_channel_info(single_image_test_acq_xml_path), dict
+    )
 
 
 def test_parse_acqusition_resolution(pv58_test_acq_xml_path):
