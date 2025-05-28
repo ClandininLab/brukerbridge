@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 # I do not have a schema from Bruker so all of the assumptions about the
 # structure of acquistion xmls here are really just educated guesses
 
+# this consant is overloaded in other modules, be careful you don't import the wrong one
+SUPPORTED_PRAIREVIEW_VERSION = "5.8.64.800"
+
 AXIS_NAMES = ["XAxis", "YAxis", "ZAxis"]
 
 
