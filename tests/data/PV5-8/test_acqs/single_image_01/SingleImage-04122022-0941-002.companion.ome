@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<OME xmlns="http://www.openmicroscopy.org/Schemas/OME/2012-06" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.openmicroscopy.org/Schemas/OME/2012-06 http://www.openmicroscopy.org/Schemas/OME/2012-06/ome.xsd" UUID="urn:uuid:1d872b66-4b70-4ffd-a741-bfed249d6fce">
+	<Image ID="Image:1" Name="Sequence:1">
+		<AcquisitionDate>2025-05-23T16:21:46</AcquisitionDate>
+		<Pixels DimensionOrder="XYZCT" ID="Pixels:1" PhysicalSizeX="5.2225591892361249" PhysicalSizeY="5.2225591892361249" PhysicalSizeZ="4" SizeC="3" SizeT="1" SizeX="128" SizeY="80" SizeZ="1" Type="uint16">
+			<Channel ID="Channel:1:0" Name="Ch1" SamplesPerPixel="1" />
+			<Channel ID="Channel:1:1" Name="Ch2" SamplesPerPixel="1" />
+			<Channel ID="Channel:1:2" Name="Ch3" SamplesPerPixel="1" />
+			<TiffData FirstC="0" FirstT="0" FirstZ="0" PlaneCount="1" IFD="0">
+				<UUID FileName="SingleImage-04122022-0941-002_Cycle00001_Ch1_000001.ome.tif">urn:uuid:542fdcfa-2c05-434a-ae1f-bb6f4497605c</UUID>
+			</TiffData>
+			<TiffData FirstC="1" FirstT="0" FirstZ="0" PlaneCount="1" IFD="0">
+				<UUID FileName="SingleImage-04122022-0941-002_Cycle00001_Ch2_000001.ome.tif">urn:uuid:013f5160-2e04-42e3-b19f-9d2be1b80905</UUID>
+			</TiffData>
+			<TiffData FirstC="2" FirstT="0" FirstZ="0" PlaneCount="1" IFD="0">
+				<UUID FileName="SingleImage-04122022-0941-002_Cycle00001_Ch3_000001.ome.tif">urn:uuid:925c0027-df18-41ac-8a55-d468875ed812</UUID>
+			</TiffData>
+			<Plane DeltaT="0" PositionX="0" PositionXUnit="µm" PositionY="0" PositionYUnit="µm" PositionZ="4621.2250000000004" PositionZUnit="µm" TheC="0" TheT="0" TheZ="0" />
+			<Plane DeltaT="0" PositionX="0" PositionXUnit="µm" PositionY="0" PositionYUnit="µm" PositionZ="4621.2250000000004" PositionZUnit="µm" TheC="1" TheT="0" TheZ="0" />
+			<Plane DeltaT="0" PositionX="0" PositionXUnit="µm" PositionY="0" PositionYUnit="µm" PositionZ="4621.2250000000004" PositionZUnit="µm" TheC="2" TheT="0" TheZ="0" />
+		</Pixels>
+	</Image>
+</OME>
