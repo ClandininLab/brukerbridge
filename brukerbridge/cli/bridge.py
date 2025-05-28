@@ -16,6 +16,9 @@ from pathlib import Path
 from typing import Deque, Dict, List, Set
 from xml.etree import ElementTree
 
+from brukerbridge.conversion.common import (AcquisitionType,
+                                            parse_pvscan_xml_version)
+from brukerbridge.conversion.pv58 import parse_acquisition_type
 from brukerbridge.io import copy_session_metadata
 from brukerbridge.legacy import (convert_tiff_collections_to_nii,
                                  convert_tiff_collections_to_nii_split,
@@ -496,45 +499,39 @@ def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[
 
 def contains_valid_xml(acquisition_path: Path) -> bool:
     """Checks that acquisition dir contains a parsable PVScan XML file made with the
-    correct version of PrarieView.
+    correct version of PrarieView, and is not a single image acquisition
     """
-    for xml_file in glob(f"{acquisition_path}/*.xml"):
+    for xml_path in acquisition_path.glob("*.xml"):
         try:
-            tree = ElementTree.parse(xml_file)
-            root = tree.getroot()
-
-            if root.attrib["version"] != SUPPORTED_PRAIREVIEW_VERSION:
+            if parse_pvscan_xml_version(xml_path) != SUPPORTED_PRAIREVIEW_VERSION:
                 logger.error(
                     "XML created by unsupported version of PraireView: %s",
-                    xml_file,
+                    xml_path,
                 )
                 continue
 
-            if root.tag == "PVScan":
-                first_seq = root[2]
-                assert first_seq.tag == "Sequence"
+            # some 5.8 specific logic here so just mandate for now. when
+            # multiple version support is introduced just need to dispatch to
+            # the conversion module for appropriate version
+            assert SUPPORTED_PRAIREVIEW_VERSION == "5.8.64.800"
 
-                # ZSeries and single plane Tseries have types 'TSeries ZSeries Element'
-                # and 'TSeries Timed Element' respectively
-                if first_seq.attrib["type"] == "Single":
-                    logger.debug(
-                        "Ignoring SingleImage acquisition %s", acquisition_path
-                    )
-                    return False
-
+            if parse_acquisition_type(xml_path) is AcquisitionType.SINGLE_IMAGE:
+                logger.debug("Ignoring SingleImage acquisition %s", acquisition_path)
+                return False
+            else:
                 return True
 
         except ElementTree.ParseError:
             logger.debug(
                 "Unparseable XML file %s in acquisition %s",
-                Path(xml_file).name,
+                xml_path.name,
                 acquisition_path,
                 exc_info=True,
             )
         except (KeyError, AssertionError):
             logger.debug(
                 "XML %s does not have the expected structure. Are you sure you've got the right files?",
-                xml_file,
+                xml_path,
                 exc_info=True,
             )
     else:
