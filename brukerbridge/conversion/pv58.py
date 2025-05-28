@@ -162,7 +162,7 @@ def parse_acquisition_tiff_page_format_fallback(xml_path: Path) -> TiffPageForma
         filename_vals = set()
 
         frame_idx = 1
-        frame_itr = acq_root.iterfind(f"./Sequence/Frame/File")
+        frame_itr = acq_root.iterfind(f"./Sequence/Frame/File[@channel='{channel}']")
         while frame_idx < 129:
             try:
                 frame_file = next(frame_itr)
@@ -181,25 +181,27 @@ def parse_acquisition_tiff_page_format_fallback(xml_path: Path) -> TiffPageForma
 
         if len(page_vals) > 1:
             # again, product of cardinality of page vals and filename vals should upper bound number of frames
-            assert len(page_vals) * len(filename_vals) >= frame_idx
+            assert len(page_vals) * len(filename_vals) >= frame_idx - 1
             return TiffPageFormat.MULTI_PAGE
         else:
             return TiffPageFormat.SINGLE_PAGE
 
 
-# TODO: this will need to be reviewed, and will need some extra logic to handle incomplete scans
 # type hinting getting a little ridiculous.. get in boys, we're writing java
 def parse_acquisition_shape(
     xml_path: Path,
-) -> Union[Tuple[int, int, int], Tuple[int, int, int, int]]:
-    """Parses shape of acquisition from acquisition xml
-
-    More or less assumes that this is a well-formed acquisition xml
+) -> Tuple[
+    Union[Tuple[int, int], Tuple[int, int, int], Tuple[int, int, int, int]], bool
+]:
+    """Parses shape of acquisition from acquisition xml. Also returns info on whether acquisition was force terminated since this method necessarily contains logic to detect that anyway.
 
     Returns:
       acq_shape: (n_x, n_y, n_t) or (n_x, n_y, n_z, n_t) for single plane and volume acquisitions respectively
+      force_terminated: true if acquisition was force terminated. only defined for volume acquisitions
     """
     acq_root = ElementTree.parse(xml_path).getroot()
+
+    acq_type = parse_acquisition_type(xml_path)
 
     n_x = int(
         acq_root.find("./PVStateShard/PVStateValue[@key='pixelsPerLine']").attrib[  # type: ignore
@@ -212,30 +214,60 @@ def parse_acquisition_shape(
         ]
     )
 
-    seqs = acq_root.findall("Sequence")
-    assert len(seqs) >= 1
+    sequences = acq_root.findall("Sequence")
+    assert len(sequences) >= 1
 
-    seq_type = seqs[0].get("type")
+    if acq_type == AcquisitionType.VOL_SERIES:
+        # sequence ordering as read is arbitrary, cycle attribute is assumed to give ordering of sequences
+        # its necessary to have oredered sequences for vol series to check last volume, but not plane series
+        sequences = sorted(
+            sequences, key=lambda sequence: int(sequence.attrib["cycle"])
+        )
 
-    # single plane acquisition
-    if seq_type == "TSeries Timed Element":
+        n_t = len(sequences)
+
+        if not n_t == 1:
+            # if the scan was force terminated, last volume scan could be
+            # incomplete the following logic checks for this. note that we are
+            # unable to detect "frame perfect" incomplete scans that completed
+            # the last volume and then stopp
+
+            n_z_last = len(sequences[-1].findall("Frame"))
+
+            # get base case n_z, checking a few vols just be sure
+            vols_to_inspect = min(4, len(sequences) - 1)
+            n_zs = [
+                len(sequences[idx].findall("Frame")) for idx in range(vols_to_inspect)
+            ]
+
+            # check assumption that all vols besides the last have the same number of planes
+            assert all([vol_z == n_zs[0] for vol_z in n_zs])
+
+            n_z = n_zs[0]
+
+            if n_z_last != n_z:
+                logger.info("Volume acquisition %s was force terminated.", xml_path)
+
+                return (n_x, n_y, n_z, n_t - 1), True
+        else:
+            # debated raising warning over this but could imagine a scenario
+            # where you'd do this, and the only problem here is that we can't
+            # determine if the acquisition completed succesfully. which we
+            # can't do for all plane series anyways so I guess that's fine
+            logger.debug("Volume acquisition %s has a single timepoint.", xml_path)
+            n_z = len(sequences[0].findall("Frame"))
+
+        return (n_x, n_y, n_z, n_t), False
+    elif acq_type == AcquisitionType.PLANE_SERIES:
         # single plane acquisitions appear to have only a single Sequence which
         # contains one Frame for each plane
-        assert len(seqs) == 1
-        n_t = len(seqs[0].findall("Frame"))
+        assert len(sequences) == 1
+        n_t = len(sequences[0].findall("Frame"))
 
-        return (n_x, n_y, n_t)
-
-    # volume acquisition
-    elif seq_type == "TSeries ZSeries Element":
-        # volume acquisitions appear to have a Sequence for each volume, each
-        # of which contains a Frame for every plane in the volume
-        n_t = len(seqs)
-        n_z = len(seqs[0].findall("Frame"))
-
-        return (n_x, n_y, n_z, n_t)
+        return (n_x, n_y, n_t), False
+    # single image
     else:
-        raise RuntimeError(f"Unsupported Sequence type: '{seq_type}'")
+        return (n_x, n_y), False
 
 
 def parse_acquisition_channel_info(xml_path: Path) -> Dict[int, str]:
