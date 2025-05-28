@@ -295,12 +295,16 @@ def single_page_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
-@pytest.fixture(params=get_matching_test_acqs("PV5-8", is_bidir_z_stroke=True))
+@pytest.fixture(
+    params=get_matching_test_acqs("PV5-8", is_vol=True, is_bidir_z_stroke=True)
+)
 def bidir_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
-@pytest.fixture(params=get_matching_test_acqs("PV5-8", is_bidir_z_stroke=False))
+@pytest.fixture(
+    params=get_matching_test_acqs("PV5-8", is_vol=True, is_bidir_z_stroke=False)
+)
 def singledir_test_acq_xml_path(request):
     return get_xml_path(request.param)
 

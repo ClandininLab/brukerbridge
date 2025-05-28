@@ -23,7 +23,7 @@ SUPPORTED_PRAIREVIEW_VERSION = "5.8.64.800"
 
 AXIS_NAMES = ["XAxis", "YAxis", "ZAxis"]
 
-
+# TODO: logging
 def parse_acquisition_type(xml_path: Path) -> AcquisitionType:
     """Parses acquisition type (Sequence type, technically) into enum encoding its allowed values
 
@@ -45,10 +45,149 @@ def parse_acquisition_type(xml_path: Path) -> AcquisitionType:
         raise AssertionError(f"Unknown acquisition type: {seq_type}")
 
 
+def parse_acquisition_is_bidirectional(xml_path: Path) -> bool:
+    """Determines whether acquisition volumes were acquired bidirectionally in z. Only relevant to volumes.
+
+    Checks only a single Sequence element.
+    """
+    acq_root = ElementTree.parse(xml_path).getroot()
+
+    if parse_acquisition_type(xml_path) != AcquisitionType.VOL_SERIES:
+        raise RuntimeError("Only volume series have a notion of bidirectional z scans")
+
+    sequence = acq_root.find("./Sequence")
+    return sequence.attrib["bidirectionalZ"] == "True"  # type: ignore
+
+
 def parse_acquisition_tiff_page_format(xml_path: Path) -> TiffPageFormat:
-    pass
+    """Reads off tiff page format from env xml."""
+    # find corresponding env path
+    env_path = xml_path.with_suffix(".env")
+
+    if not env_path.exists():
+        return parse_acquisition_tiff_page_format_fallback(xml_path)
+
+    env_root = ElementTree.parse(env_path).getroot()
+
+    tiff_page_format_rec = env_root.find(
+        "./PVStateShard/PVStateValue[@key='saveAsMultipageTIFF']"
+    )
+
+    if tiff_page_format_rec is not None:
+        if tiff_page_format_rec.attrib["value"] == "True":
+            return TiffPageFormat.MULTI_PAGE
+        else:
+            return TiffPageFormat.SINGLE_PAGE
+    else:
+        return parse_acquisition_tiff_page_format_fallback(xml_path)
+
+    # key is saveAsMultipageTIFF
+    # PVStateShard/PVStateValue
 
 
+# NOTE: this may be unnecessary but I had already written it when I discovered
+# you could read off the setting from the env file, so it stays
+def parse_acquisition_tiff_page_format_fallback(xml_path: Path) -> TiffPageFormat:
+    """Fallback strategy that does some educated guess work to figure out whether this acquisition uses single or multi-page tiffs. Ideally one just reads the value off the .env file
+
+    There is no global setting for this, so it reads some frames in an
+    acquisition type dependent way and checks to see whether each frame has a
+    unique filename attrib/whether the page attrib is ever incremented.
+
+    Also, only looks at one channel.
+    """
+    acq_root = ElementTree.parse(xml_path).getroot()
+
+    acq_type = parse_acquisition_type(xml_path)
+
+    if acq_type == AcquisitionType.SINGLE_IMAGE:
+        # definitional
+        return TiffPageFormat.SINGLE_PAGE
+    elif acq_type == AcquisitionType.VOL_SERIES:
+        # pick channel value to inspect arbitrarily, by taking the value of first file element
+        channel = acq_root.find("./Sequence/Frame/File").attrib["channel"]  # type: ignore
+
+        inferred_multi_page = []
+
+        # one sequence would probably be enough, but we'll look at four just to be safe
+        # xml elements are one-indexed
+        for seq_idx in range(1, 5):
+            seq = acq_root.find(f"./Sequence[{seq_idx}]")
+
+            page_vals = set()
+            filename_vals = set()
+
+            seq_files = seq.findall(f"./Frame/File[@channel='{channel}']")  # type: ignore
+            for frame_file in seq_files:
+                page_vals.add(frame_file.attrib["page"])
+                filename_vals.add(frame_file.attrib["filename"])
+
+            if len(seq_files) == 1:
+                raise RuntimeError(
+                    "Cannot infer tiff page format from a volume series with only one frame"
+                )
+
+            if len(page_vals) > 1:
+                inferred_multi_page.append(True)
+
+                # product of cardinality of page vals and filename vals should upper bound number of frames
+                assert len(page_vals) * len(filename_vals) >= len(seq_files)
+            else:
+                inferred_multi_page.append(False)
+
+        # this would only be false if one Sequence element in an acquisition can be
+        # single paged and another multi. note that this sort of defeats the
+        # point of checking multiple sequences in that it will be raised if
+        # ever they give different results, however I must again emphasize that
+        # I do not have a schema from bruker and am just guessing, so its good
+        # to check assumptions
+        assert any(inferred_multi_page) == all(inferred_multi_page)
+
+        if all(inferred_multi_page):
+            return TiffPageFormat.MULTI_PAGE
+        else:
+            return TiffPageFormat.SINGLE_PAGE
+
+    else:
+        assert acq_type == AcquisitionType.PLANE_SERIES
+
+        # NOTE: single plane acquisitions have a single Sequence element (I
+        # think) and can have many thousands of pages in a single multi-page
+        # tiff. We will just check 128 frames
+
+        # again pick channel value to inspect arbitrarily, by taking the value of first file element
+        channel = acq_root.find("./Sequence/Frame/File").attrib["channel"]  # type: ignore
+
+        page_vals = set()
+        filename_vals = set()
+
+        frame_idx = 1
+        frame_itr = acq_root.iterfind(f"./Sequence/Frame/File")
+        while frame_idx < 129:
+            try:
+                frame_file = next(frame_itr)
+            except StopIteration:
+                break
+
+            page_vals.add(frame_file.attrib["page"])  # type: ignore
+            filename_vals.add(frame_file.attrib["filename"])  # type: ignore
+
+            frame_idx += 1
+
+        if frame_idx == 1:
+            raise RuntimeError(
+                "Cannot infer tiff page format from a plane series with only one frame"
+            )
+
+        if len(page_vals) > 1:
+            # again, product of cardinality of page vals and filename vals should upper bound number of frames
+            assert len(page_vals) * len(filename_vals) >= frame_idx
+            return TiffPageFormat.MULTI_PAGE
+        else:
+            return TiffPageFormat.SINGLE_PAGE
+
+
+# TODO: this will need to be reviewed, and will need some extra logic to handle incomplete scans
 # type hinting getting a little ridiculous.. get in boys, we're writing java
 def parse_acquisition_shape(
     xml_path: Path,
@@ -111,11 +250,13 @@ def parse_acquisition_channel_info(xml_path: Path) -> Dict[int, str]:
         1: "Red",
         2: "Green"
     }
+
+    Only inspects one frame of one sequence
     """
     acq_root = ElementTree.parse(xml_path).getroot()
 
     # raises attribute error on malformed xmls
-    ch_files = acq_root.find("Sequence").find("Frame").findall("File")  # type: ignore
+    ch_files = acq_root.find("./Sequence/Frame").findall("./File")  # type: ignore
 
     channel_info = {}
     for ch_file in ch_files:
