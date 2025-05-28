@@ -44,7 +44,7 @@ markers = [
 ]
 
 
-[tools.isort]
+[tool.isort]
 known_first_party=["brukerbridge"]
 
 [tool.pyright]
