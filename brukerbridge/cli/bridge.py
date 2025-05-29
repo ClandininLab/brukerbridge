@@ -40,9 +40,9 @@ SUFFIX_WHITELIST = (
     "hdf5",
 )
 
-SUPPORTED_PRAIREVIEW_VERSION = "5.8.64.800"
+SUPPORTED_PRAIREVIEW_VERSION = "5.5.64.600"
 
-RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.8.64.800\Prairie View\Utilities\Image-Block Ripping Utility.exe"
+RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.5.64.600\Prairie View\Utilities\Image-Block Ripping Utility.exe"
 
 # max concurrent processes
 MAX_RIPPERS = 2
