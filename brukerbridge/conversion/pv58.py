@@ -2,14 +2,16 @@
 """
 import logging
 from pathlib import Path
-from typing import Dict, Tuple, Union
+from typing import Dict, Iterator, Tuple, Union
 from xml.etree import ElementTree
 
 import nibabel as nib
 import numpy as np
+from numpy.typing import NDArray
 from PIL import Image
 
-from brukerbridge.conversion.common import AcquisitionType, TiffPageFormat
+from brukerbridge.constants import AcquisitionType, TiffPageFormat
+from brukerbridge.io import write_nifti_streaming
 from brukerbridge.utils import format_acq_path
 
 logger = logging.getLogger(__name__)
@@ -319,53 +321,88 @@ def parse_acquisition_resolution(xml_path: Path) -> Tuple[float, float, float]:
     return tuple(resolution)
 
 
-def single_plane_acquisition_frame_gen(xml_path: Path, channel: int):
-    """Generator over frames (in time) for ripped Bruker data"""
-    acq_path = xml_path.parent
-    acq_root = ElementTree.parse(xml_path).getroot()
+def convert_acquisition_to_nifti(xml_path: Path):
+    # loop over channels
+    # dispatch to frame gen for acquisition types
+    # write some metadata?
 
-    # (n_x, n_y, n_t)
-    acq_shape = parse_acquisition_shape(xml_path)
-    assert len(acq_shape) == 3
+    acq_type = parse_acquisition_type(xml_path)
+    channel_info = parse_acquisition_channel_info(xml_path)
+    acq_shape, force_terminated = parse_acquisition_shape(xml_path)
 
-    acq_channel_info = parse_acquisition_channel_info(xml_path)
-    assert channel in acq_channel_info
+    if force_terminated:
+        assert acq_type == AcquisitionType.VOL_SERIES
+        logger.warning(
+            "Volume series %s was force terminated and will be truncated to last complete volume.",
+            xml_path,
+        )
 
-    frames = acq_root.findall("./Sequence/Frame")
+    # could parallelize over channels at expense of adding significant complexity to bridge
+    for channel_idx, channel_name in channel_info.items():
+        logger.info(
+            "Converting channel %s: %s of %s",
+            channel_idx,
+            channel_name,
+            format_acq_path(xml_path.parent),
+        )
 
-    # parsed xml order is unreliable so the index attrib of Frames is assumed
-    # to give ordering. again, we're just guessing at the spec here
-    frames = sorted(frames, key=lambda frame: int(frame.attrib["index"]))
-    assert len(frames) == acq_shape[2]
+        # silence type hinting on acq_shape. despite writing an insane type
+        # declaration for parse_acquisition_shape the static analyzer is not
+        # capable of inferring that the AcquisitionType enum enforces the type
+        # of acq_shape
+        if acq_type == AcquisitionType.VOL_SERIES:
+            frame_gen = vol_series_frame_gen(
+                xml_path, channel_idx, acq_shape  # type: ignore
+            )
 
-    for frame_rec in frames:
-        # relative
-        frame_path = frame_rec.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
+        elif acq_type == AcquisitionType.PLANE_SERIES:
+            frame_gen = plane_series_frame_gen(
+                xml_path, channel_idx, acq_shape  # type: ignore
+            )
+        # single image
+        else:
+            raise NotImplementedError("Conversion of single images is not supported.")
 
-        frame = np.array(Image.open(acq_path / frame_path))
-        assert frame.shape == acq_shape[:2]
-        assert frame.dtype == np.uint16
+        # create a new header object here out of an abundance caution that
+        # nibabel might be doing something stateful. it's not very expensive
+        header = create_acquisition_nifti_header(xml_path)
 
-        yield frame
+        acq_path = xml_path.parent
+        output_path = acq_path / f"{acq_path.name}_channel_{channel_idx}.nii"
+
+        write_nifti_streaming(header, frame_gen, output_path)
 
 
-def volume_acquisition_frame_gen(xml_path: Path, channel: int):
-    """Generator over frames (in z and time) for ripped Bruker data"""
-    acq_path = xml_path.parent
-    acq_root = ElementTree.parse(xml_path).getroot()
+# TODO: record more metadata in the header. resolution in particular
+def create_acquisition_nifti_header(xml_path: Path) -> nib.nifti1.Nifti1Header:
+    acq_shape, _ = parse_acquisition_shape(xml_path)
 
-    # (n_x, n_y, n_z, n_t)
-    acq_shape = parse_acquisition_shape(xml_path)
-    assert len(acq_shape) == 4
+    # NOTE: AB 2025/05/29
+    # We'll stick to Nifti1 because the main changes to Nifti2 are switching
+    # some data types from 32 bit to 64 bit which we do not need, but msotly
+    # because I have only tested against Nifti1.
+    header = nib.nifti1.Nifti1Header()
+    header.set_data_dtype(np.uint16)
 
-    acq_channel_info = parse_acquisition_channel_info(xml_path)
-    assert channel in acq_channel_info
+    # NOTE: nifti (or at least nibabel) expects Fortran style column-major
+    # order for the data block, but evidently expects C style row-major order for the shape
+    header.set_data_shape(acq_shape)
 
-    sequences = acq_root.findall("./Sequence")
-    bidirectional = sequences[0].attrib["bidirectionalZ"] == "True"
+    header.set_sform(np.eye(4))
 
-    if bidirectional:
-        # NOTE: berger 2024/08/06
+    # NOTE: NIfTI supports data scaling, which nibabel uses to maximize
+    # precision. We have no use for this since we're saving 13-bit data as uint16s.
+    # TODO: worthwhile to check the .env and confirm this
+    assert header.get_slope_inter() == (1.0, 0.0)
+
+    return header
+
+
+def vol_series_frame_gen(
+    xml_path: Path, channel: int, acq_shape: Tuple[int, int, int, int]
+) -> Iterator[NDArray]:
+    if parse_acquisition_is_bidirectional(xml_path):
+        # NOTE: AB 2024/08/06, PV5.5
         # Although support for this could be easily cheesed, I have declined to
         # do so for the moment due to some mysteries in the acquisition xml
         # that I am not confident enough to guess at right now. Specifically, the
@@ -382,11 +419,12 @@ def volume_acquisition_frame_gen(xml_path: Path, channel: int):
         # is, ultimately, cowboy shit.
         #
         # In the past, Bella supported bidirectional z scans by simply flipping
-        # the order of the frames every other volume. Definitely cowboy shit,
+        # the order of the frames every other volume/Sequence. Definitely cowboy shit,
         # but this is what you would want to do to naively support
         # bidirectional scans: take the *sorted* frames and reverse the order
         # the list is traversed by the generator for Sequences with an even
         # cycle attribute
+        # NOTE AB 2025/05/29: this continues to be true for PV5.8
         raise NotImplementedError(
             (
                 "Support for bidirectional scans not supported due to Bruker sketchiness. "
@@ -394,70 +432,141 @@ def volume_acquisition_frame_gen(xml_path: Path, channel: int):
             )
         )
 
-    # cycle attribute is assumed to give ordering of sequences
-    sequences = sorted(sequences, key=lambda sequence: int(sequence.attrib["cycle"]))
+    tiff_page_format = parse_acquisition_tiff_page_format(xml_path)
 
-    for vol_idx, sequence_rec in enumerate(sequences):
-        frames = sequence_rec.findall("./Frame")
+    acq_root = ElementTree.parse(xml_path).getroot()
 
-        # index attribute again assumed to give ordering within a sequence
-        frames = sorted(frames, key=lambda frame: int(frame.attrib["index"]))
+    sequence_elements = acq_root.findall("./Sequence")
+    assert len(sequence_elements) == acq_shape[3]
 
-        if len(frames) < acq_shape[2]:
+    # ordering of elements within an xml file is not guaranteed.
+    # cycle attribute is assumed to give ordering of sequences within an acquisition
+    sequence_elements = sorted(
+        sequence_elements, key=lambda sequence: int(sequence.attrib["cycle"])
+    )
 
-            logger.warning(
-                "%s: volume %s of %s had %s planes of expected %s. Discarding remaining volumes",
-                format_acq_path(acq_path),
-                vol_idx,
-                acq_shape[3],
-                len(frames),
-                acq_shape[2],
+    for sequence_element in sequence_elements:
+        frame_elements = sequence_element.findall("./Frame")
+
+        # index attribute is assumed to give ordering of frames within a sequence
+        frame_elements = sorted(
+            frame_elements, key=lambda frame: int(frame.attrib["index"])
+        )
+
+        # parse_acquisition_shape only checks the last couple of Sequences for this condition
+        assert len(frame_elements) == acq_shape[2]
+
+        if tiff_page_format == TiffPageFormat.SINGLE_PAGE:
+            for frame_element in frame_elements:
+                # relative filesystem path to frame image
+                frame_path = frame_element.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
+
+                with Image.open(xml_path.parent / frame_path) as frame_img:
+                    frame_img_arr = np.array(frame_img)
+                    assert frame_img_arr.shape == acq_shape[:2]
+                    assert frame_img_arr.dtype == np.uint16
+
+                    yield frame_img_arr
+        # multi-page
+        else:
+            # NOTE: AB 2025/05/29
+            # while we could simply iterate through frame_elements, open a new
+            # image file for each and seek directly to the corresponding page,
+            # that will be fairly expensive for large tiffs with many pages. this
+            # significantly more complicated logic implements the optimization
+            # of opening new images and seeking only when necessary, and
+            # handles the possibility that there might be more than one tiff
+            # per volume/Sequence (I do not expect this to occur in practice,
+            # but again I am only guessing at the spec so I think its wise to
+            # handle this case)
+            frame_idx = 0
+            # File element for frame with frame_idx and for channel index channel
+            frame_file_element = frame_elements[frame_idx].find(
+                f"./File[@channel='{channel}']"
             )
-            break
 
-        for frame_rec in frames:
-            # relative
-            frame_path = frame_rec.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
+            while frame_idx < len(frame_elements):
+                img_path = frame_file_element.attrib["filename"]  # type: ignore
+                with Image.open(xml_path.parent / img_path) as frame_img:
+                    # iterate and emit frames for each page in this tiff
+                    while frame_file_element.attrib["filename"] == img_path:  # type: ignore
+                        frame_page = int(frame_file_element.attrib["page"])  # type: ignore
 
-            frame = np.array(Image.open(acq_path / frame_path))
-            assert frame.shape == acq_shape[:2]
-            assert frame.dtype == np.uint16
+                        # xml pages are one-indexed, pillow uses zero indexing
+                        frame_img.seek(frame_page - 1)
 
-            yield frame
+                        frame_img_arr = np.array(frame_img)
+                        assert frame_img_arr.shape == acq_shape[:2]
+                        assert frame_img_arr.dtype == np.uint16
+
+                        yield frame_img_arr
+
+                        frame_idx += 1
+
+                        if frame_idx < len(frame_elements):
+                            frame_file_element = frame_elements[frame_idx].find(
+                                f"./File[@channel='{channel}']"
+                            )
+                        else:
+                            break
 
 
-# TODO: deprecate
-def write_nifti(xml_path: Path, channel: int):
-    acq_path = xml_path.parent
-    output_path = acq_path / f"{acq_path.name}_channel_{channel}.nii"
+def plane_series_frame_gen(
+    xml_path: Path, channel: int, acq_shape: Tuple[int, int, int]
+) -> Iterator[NDArray]:
 
-    acq_shape = parse_acquisition_shape(xml_path)
+    tiff_page_format = parse_acquisition_tiff_page_format(xml_path)
 
-    if len(acq_shape) == 3:
-        frames = single_plane_acquisition_frame_gen(xml_path, channel)
+    acq_root = ElementTree.parse(xml_path).getroot()
+
+    frame_elements = acq_root.findall("./Sequence/Frame")
+
+    # parsed xml order is unreliable so the index attrib of Frames is assumed
+    # to give ordering. again, we're just guessing at the spec here
+    frame_elements = sorted(
+        frame_elements, key=lambda frame: int(frame.attrib["index"])
+    )
+    assert len(frame_elements) == acq_shape[2]
+
+    if tiff_page_format == TiffPageFormat.SINGLE_PAGE:
+        # relative filesystem path to frame image
+        frame_path = frame_rec.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
+
+        with Image.open(xml_path.parent / frame_path) as frame_img:
+            frame_img_arr = np.array(frame_img)
+            assert frame_img_arr.shape == acq_shape[:2]
+            assert frame_img_arr.dtype == np.uint16
+
+            yield frame_img_arr
+    # multi-page
     else:
-        frames = volume_acquisition_frame_gen(xml_path, channel)
+        frame_idx = 0
+        # File element for frame with frame_idx and for channel index channel
+        frame_file_element = frame_elements[frame_idx].find(
+            f"./File[@channel='{channel}']"
+        )
 
-    hdr = nib.nifti1.Nifti1Header()
-    hdr.set_data_dtype(np.uint16)
-    # NOTE: nifti (or at least nibabel) expects Fortran style column-major
-    # order for the data block, but evidently expects C style row-major order for the shape
-    hdr.set_data_shape(acq_shape)
+        while frame_idx < len(frame_elements):
+            img_path = frame_file_element.attrib["filename"]  # type: ignore
+            with Image.open(xml_path.parent / img_path) as frame_img:
+                # iterate and emit frames for each page in this tiff
+                while frame_file_element.attrib["filename"] == img_path:  # type: ignore
+                    frame_page = int(frame_file_element.attrib["page"])  # type: ignore
 
-    hdr.set_sform(np.eye(4))
+                    # xml pages are one-indexed, pillow uses zero indexing
+                    frame_img.seek(frame_page - 1)
 
-    # NOTE: NIfTI supports data scaling, which nibabel uses to maximize
-    # precision. We have no use for this since we're saving 13-bit data as uint16s.
-    assert hdr.get_slope_inter() == (1.0, 0.0)
+                    frame_img_arr = np.array(frame_img)
+                    assert frame_img_arr.shape == acq_shape[:2]
+                    assert frame_img_arr.dtype == np.uint16
 
-    with open(output_path, "wb") as img_fh:
-        hdr.write_to(img_fh)
+                    yield frame_img_arr
 
-        img_fh.seek(hdr.get_data_offset())
-        assert img_fh.tell() == hdr.get_data_offset()
+                    frame_idx += 1
 
-        for frame in frames:
-            # NOTE: the net result of this transposition and the frame
-            # generators is Fortran style column-major order
-            for slc in frame.T:
-                img_fh.write(slc.tobytes())
+                    if frame_idx < len(frame_elements):
+                        frame_file_element = frame_elements[frame_idx].find(
+                            f"./File[@channel='{channel}']"
+                        )
+                    else:
+                        break

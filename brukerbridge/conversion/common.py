@@ -2,22 +2,12 @@
 """
 
 import logging
-from enum import Enum
 from pathlib import Path
 from xml.etree import ElementTree
 
+import brukerbridge.conversion.pv58 as pv58
+
 logger = logging.getLogger(__name__)
-
-
-class AcquisitionType(Enum):
-    VOL_SERIES = 1
-    PLANE_SERIES = 2
-    SINGLE_IMAGE = 3
-
-
-class TiffPageFormat(Enum):
-    SINGLE_PAGE = 1
-    MULTI_PAGE = 2
 
 
 def parse_pvscan_xml_version(xml_path: Path) -> str:
@@ -28,4 +18,14 @@ def parse_pvscan_xml_version(xml_path: Path) -> str:
     return acq_root.attrib["version"]
 
 
-# separate version parsing and checking whether it is a volume or plane series
+def convert_acquisition_to_nifti(xml_path: Path):
+    pv_version = parse_pvscan_xml_version(xml_path)
+    if pv_version != pv58.SUPPORTED_PRAIREVIEW_VERSION:
+        # NOTE: AB 2025/05/2
+        # I've put this method in common with the intent that it will
+        # eventually dispatch to PV version appropriate logic. That being said,
+        # it only supports PV5.8 right now and immediately goes back to using
+        # logic in the pv58 module so
+        raise NotImplementedError
+
+    pv58.convert_acquisition_to_nifti(xml_path)
