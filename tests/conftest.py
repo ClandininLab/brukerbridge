@@ -390,9 +390,13 @@ def img_shape(request):
     return request.param
 
 
-@pytest.fixture
-def img_arr(img_shape):
-    return np.arange(np.prod(img_shape), dtype=np.uint16).reshape(img_shape)
+@pytest.fixture(params=[1, 2])
+def img_arr(request, img_shape):
+    # parametrize power we take each element, just to sidestep potential reshape problems
+    return (
+        np.arange(np.prod(img_shape), dtype=np.uint16).reshape(img_shape)
+        ** request.param
+    )
 
 
 @pytest.fixture
@@ -417,6 +421,50 @@ def frame_gen(img_arr):
             for t_idx in range(img_arr.shape[3]):
                 for z_idx in range(img_arr.shape[2]):
                     yield img_arr[:, :, z_idx, t_idx]
+
+    return _frame_gen()
+
+
+@pytest.fixture
+def raising_frame_gen(frame_gen):
+    """Yields a few frames before raising"""
+
+    def _frame_gen():
+        for _ in range(4):
+            yield next(frame_gen)
+
+        raise Exception
+
+    return _frame_gen()
+
+
+@pytest.fixture
+def too_few_frame_gen(img_arr):
+    def _frame_gen():
+        # 3d
+        if len(img_arr.shape) == 3:
+            for t_idx in range(img_arr.shape[2] - 1):
+                yield img_arr[:, :, t_idx]
+        # 4d
+        else:
+            for t_idx in range(img_arr.shape[3] - 1):
+                for z_idx in range(img_arr.shape[2]):
+                    yield img_arr[:, :, z_idx, t_idx]
+
+    return _frame_gen()
+
+
+@pytest.fixture
+def too_many_frame_gen(frame_gen):
+    """Yields a few frames before raising"""
+
+    def _frame_gen():
+        frame = next(frame_gen)
+        yield frame
+
+        yield from frame_gen
+
+        yield frame
 
     return _frame_gen()
 
