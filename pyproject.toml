@@ -36,7 +36,7 @@ test = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--basetemp=D: -l -ra"
+addopts = " -l -ra"
 markers = [
         "slow",
         "darwin",

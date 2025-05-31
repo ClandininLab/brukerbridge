@@ -17,6 +17,7 @@ def test_parse_acquisition_type_detects_volume_series(volume_test_acq_xml_path):
     )
 
 
+@pytest.mark.slow
 def test_parse_acquisition_type_detects_plane_series(single_plane_test_acq_xml_path):
     assert (
         parse_acquisition_type(single_plane_test_acq_xml_path)
@@ -81,10 +82,12 @@ def test_parse_acquisition_is_bidirectional_neg(singledir_test_acq_xml_path):
     assert parse_acquisition_is_bidirectional(singledir_test_acq_xml_path) == False
 
 
+@pytest.mark.slow
 def test_parse_acquisition_channel_info_2ch(two_channel_test_acq_xml_path):
     assert len(parse_acquisition_channel_info(two_channel_test_acq_xml_path)) == 2
 
 
+@pytest.mark.slow
 def test_parse_acquisition_channel_info_3ch(three_channel_test_acq_xml_path):
     assert len(parse_acquisition_channel_info(three_channel_test_acq_xml_path)) == 3
 
@@ -96,6 +99,7 @@ def test_parse_acquisition_channel_info_single_image(single_image_test_acq_xml_p
     )
 
 
+@pytest.mark.slow
 def test_parse_acqusition_resolution(pv58_test_acq_xml_path):
     """In the absence of ground truth (which could be obtained by inspection of
     the XML, but at which point would just be circular) this just checks that
@@ -106,6 +110,7 @@ def test_parse_acqusition_resolution(pv58_test_acq_xml_path):
     assert len(parsed_res) == 3
 
 
+@pytest.mark.slow
 def test_parse_acquisition_shape_detects_force_termination_completed(
     completed_volume_test_acq_xml_path,
 ):
@@ -113,6 +118,7 @@ def test_parse_acquisition_shape_detects_force_termination_completed(
     assert force_terminated == False
 
 
+@pytest.mark.slow
 def test_parse_acquisition_shape_detects_force_termination_aborted(
     aborted_volume_test_acq_xml_path,
 ):
@@ -139,6 +145,7 @@ def test_parse_acquisition_shape_handles_volume_series(volume_test_acq_xml_path)
     assert len(acq_shape) == 4
 
 
+@pytest.mark.slow
 def test_parse_acquisition_shape_handles_plane_series(single_plane_test_acq_xml_path):
     """Once again in the absence of ground truth just check return type and shape"""
     acq_shape, _ = parse_acquisition_shape(single_plane_test_acq_xml_path)
@@ -153,6 +160,7 @@ def test_parse_acquisition_shape_handles_single_images(single_image_test_acq_xml
     assert len(acq_shape) == 2
 
 
+@pytest.mark.slow
 def test_create_acquisition_nifti_header_runs(pv58_test_acq_xml_path):
     assert isinstance(
         create_acquisition_nifti_header(pv58_test_acq_xml_path), nib.nifti1.Nifti1Header
