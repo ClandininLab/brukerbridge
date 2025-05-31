@@ -181,6 +181,7 @@ def main(root_dir: str):
                         # more precisely, a process has been submitted to the
                         # queue and will be spawned when the executor has an
                         # idle worker slot
+                        # TODO: why not just log "queued" then
                         logger.debug(
                             "Spawned NIfTI conversion process for %s",
                             format_acq_path(acq_path),

@@ -16,7 +16,7 @@ from brukerbridge.utils import format_acq_path
 
 logger = logging.getLogger(__name__)
 
-# NOTE: berger 8/6/24
+# NOTE: AB 2024/05/29
 # I do not have a schema from Bruker so all of the assumptions about the
 # structure of acquistion xmls here are really just educated guesses
 

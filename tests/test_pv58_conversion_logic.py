@@ -1,12 +1,13 @@
 """ Test for XML parsing and associated conversion logic specific to PraireView 5.8
 """
+import nibabel as nib
 import pytest
 
 from brukerbridge.constants import AcquisitionType, TiffPageFormat
 from brukerbridge.conversion.pv58 import (
-    parse_acquisition_channel_info, parse_acquisition_is_bidirectional,
-    parse_acquisition_resolution, parse_acquisition_shape,
-    parse_acquisition_tiff_page_format,
+    create_acquisition_nifti_header, parse_acquisition_channel_info,
+    parse_acquisition_is_bidirectional, parse_acquisition_resolution,
+    parse_acquisition_shape, parse_acquisition_tiff_page_format,
     parse_acquisition_tiff_page_format_fallback, parse_acquisition_type)
 
 
@@ -150,3 +151,9 @@ def test_parse_acquisition_shape_handles_single_images(single_image_test_acq_xml
     acq_shape, _ = parse_acquisition_shape(single_image_test_acq_xml_path)
     assert isinstance(acq_shape, tuple)
     assert len(acq_shape) == 2
+
+
+def test_create_acquisition_nifti_header_runs(pv58_test_acq_xml_path):
+    assert isinstance(
+        create_acquisition_nifti_header(pv58_test_acq_xml_path), nib.nifti1.Nifti1Header
+    )
