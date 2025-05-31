@@ -425,6 +425,23 @@ def frame_gen(img_arr):
     return _frame_gen()
 
 
+# sometimes you just need another one
+@pytest.fixture
+def frame_gen2(img_arr):
+    def _frame_gen():
+        # 3d
+        if len(img_arr.shape) == 3:
+            for t_idx in range(img_arr.shape[2]):
+                yield img_arr[:, :, t_idx]
+        # 4d
+        else:
+            for t_idx in range(img_arr.shape[3]):
+                for z_idx in range(img_arr.shape[2]):
+                    yield img_arr[:, :, z_idx, t_idx]
+
+    return _frame_gen()
+
+
 @pytest.fixture
 def raising_frame_gen(frame_gen):
     """Yields a few frames before raising"""
@@ -481,7 +498,19 @@ def streaming_nii_path(tmp_path):
 
 
 @pytest.fixture
+def streaming_nii_gz_path(tmp_path):
+    return tmp_path / "streaming.nii.gz"
+
+
+@pytest.fixture
 def buffered_nii_path(tmp_path, buffered_nii):
     _buffered_path = tmp_path / "buffered.nii"
+    buffered_nii.to_filename(_buffered_path)
+    return _buffered_path
+
+
+@pytest.fixture
+def buffered_nii_gz_path(tmp_path, buffered_nii):
+    _buffered_path = tmp_path / "buffered.nii.gz"
     buffered_nii.to_filename(_buffered_path)
     return _buffered_path

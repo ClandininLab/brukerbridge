@@ -1,6 +1,8 @@
 """ Test brukerbridge.io module
 """
 
+import gzip
+
 import pytest
 
 from brukerbridge.io import write_nifti_streaming
@@ -13,7 +15,7 @@ def test_mismatched_dims():
     pass
 
 
-def test_write_nifti_streaming_veracity(
+def test_write_nifti_streaming_uncompressed(
     header, frame_gen, streaming_nii_path, buffered_nii_path
 ):
     """Test that streaming write matches buffered write byte for byte"""
@@ -21,6 +23,33 @@ def test_write_nifti_streaming_veracity(
 
     with open(streaming_nii_path, "rb") as s_fh, open(buffered_nii_path, "rb") as b_fh:
         assert s_fh.read() == b_fh.read()
+
+
+def test_write_nifti_streaming_compressed(
+    header, frame_gen, streaming_nii_gz_path, buffered_nii_gz_path
+):
+    """Test that streaming write matches buffered write byte for byte"""
+    write_nifti_streaming(header, frame_gen, streaming_nii_gz_path)
+
+    # filename is included in the gzip header so you can't check for byte-for-byte identity of uncompressed files
+    with gzip.GzipFile(streaming_nii_gz_path, "rb") as s_fh, gzip.GzipFile(
+        buffered_nii_gz_path, "rb"
+    ) as b_fh:
+        assert s_fh.read() == b_fh.read()
+
+
+def test_write_nifti_streaming_compressed_determinism(
+    tmp_path, header, frame_gen, frame_gen2
+):
+    """gzip isn't deterministic by default for the inclusion of a timestamp"""
+    write_nifti_streaming(header, frame_gen, tmp_path / "test1.nii.gz")
+    write_nifti_streaming(header, frame_gen2, tmp_path / "test2.nii.gz")
+
+    # filename is included in the gzip header so you can't check for byte-for-byte identity of uncompressed files
+    with gzip.GzipFile(tmp_path / "test1.nii.gz", "rb") as t1_fh, gzip.GzipFile(
+        tmp_path / "test2.nii.gz", "rb"
+    ) as t2_fh:
+        assert t1_fh.read() == t2_fh.read()
 
 
 def test_write_nifti_streaming_handles_exception(
