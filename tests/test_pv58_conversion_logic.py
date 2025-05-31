@@ -128,7 +128,7 @@ def test_parse_acquisition_shape_detects_force_termination_aborted(
     ):
         # jacob either labeled this one wrong or executed a frame perfect termination
         # either way, it can't be distingiushed from a completed acquisition
-        pytest.xfail(
+        pytest.skip(
             "This acquisition is structurally identical to a completed acquisition"
         )
 
@@ -161,7 +161,11 @@ def test_parse_acquisition_shape_handles_single_images(single_image_test_acq_xml
 
 
 @pytest.mark.slow
-def test_create_acquisition_nifti_header_runs(pv58_test_acq_xml_path):
-    assert isinstance(
-        create_acquisition_nifti_header(pv58_test_acq_xml_path), nib.nifti1.Nifti1Header
-    )
+def test_create_acquisition_nifti_header(pv58_test_acq_xml_path):
+    """Tests that fields are set correctly"""
+    acq_shape = parse_acquisition_shape(pv58_test_acq_xml_path)
+
+    header = create_acquisition_nifti_header(pv58_test_acq_xml_path)
+    assert isinstance(header, nib.nifti1.Nifti1Header)
+
+    assert header.get_data_shape() == acq_shape

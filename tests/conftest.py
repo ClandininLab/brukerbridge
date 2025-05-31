@@ -2,6 +2,7 @@
 """
 
 import json
+import math
 import shutil
 import sys
 from glob import glob
@@ -400,6 +401,12 @@ def img_arr(request, img_shape):
 
 
 @pytest.fixture
+def min_chunk_size_bytes(img_shape):
+    # sample is one slice along last axis, i.e. atomic chunk size
+    return math.prod(img_shape[:-1]) * 2
+
+
+@pytest.fixture
 def header(img_shape):
     hdr = nib.nifti1.Nifti1Header()
     hdr.set_data_dtype(np.uint16)
@@ -443,11 +450,12 @@ def frame_gen2(img_arr):
 
 
 @pytest.fixture
-def raising_frame_gen(frame_gen):
+def raising_frame_gen(frame_gen, img_shape):
     """Yields a few frames before raising"""
 
     def _frame_gen():
-        for _ in range(4):
+        n_frames = math.prod(img_shape[2:])
+        for _ in range(min(4, n_frames)):
             yield next(frame_gen)
 
         raise Exception
