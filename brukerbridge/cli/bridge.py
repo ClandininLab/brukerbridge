@@ -349,6 +349,15 @@ def warn_deprecated_config_options(session_path: Path):
             user_name,
         )
 
+    if "split" in config and parse_malformed_json_bool(config["split"]):
+        logger.warning(
+            (
+                "%s: you have enabled the deprecated 'split' option in your config. It no longer has any effect, use 'max_image_size'"
+                ""
+            ),
+            user_name,
+        )
+
 
 def ripping_complete(acquisition_path: Path) -> bool:
     """Checks whether raw data has been deleted, indicative of ripping halting"""

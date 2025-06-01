@@ -1,7 +1,5 @@
 {
     "oak_target": "X:/data/berger/imaging/import",
     "convert_to": "nii",
-    "email": "a5b@stanford.edu",
-    "add_to_build_que": "True",
-    "transfer_fictrac": "False"
+    "add_to_build_que": "True"
 }

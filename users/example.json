@@ -1,0 +1,5 @@
+{
+    "oak_target": "X:/data/example/imaging/import",
+    "convert_to": "nii.gz",
+    "max_image_size": 16000000000
+}
