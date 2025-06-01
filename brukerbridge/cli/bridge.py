@@ -3,8 +3,6 @@
 import concurrent.futures
 import json
 import logging
-import logging.config
-import logging.handlers
 import multiprocessing
 import os
 import subprocess
@@ -16,8 +14,8 @@ from pathlib import Path
 from typing import Deque, Dict, List, Set
 from xml.etree import ElementTree
 
-from brukerbridge.conversion.common import (AcquisitionType,
-                                            parse_pvscan_xml_version)
+from brukerbridge.constants import AcquisitionType
+from brukerbridge.conversion.common import parse_pvscan_xml_version
 from brukerbridge.conversion.pv58 import parse_acquisition_type
 from brukerbridge.io import copy_session_metadata
 from brukerbridge.legacy import (convert_tiff_collections_to_nii,

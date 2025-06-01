@@ -181,7 +181,7 @@ def split_vol_targets(volume_acquisition):
 #  =============================================
 
 
-def get_matching_test_acqs(
+def get_matching_raw_test_acqs(
     pv_version: str,
     is_vol=None,
     is_multi_page_tiff=None,
@@ -248,14 +248,14 @@ def get_matching_test_acqs(
     search_path = (
         base_path
         / pv_version
-        / "test_acqs"
+        / "raw_test_acqs"
         / f"{vol_str}_{tiff_str}_{z_stroke_str}_{ch_str}_{compl_str}"
     )
 
     return glob(str(search_path))
 
 
-def get_single_image_test_acqs(
+def get_single_image_raw_test_acqs(
     pv_version: str,
 ):
     """List test single image acquisitions
@@ -268,7 +268,7 @@ def get_single_image_test_acqs(
     # it, out of concern for weird fixture behavior
     base_path = (files("brukerbridge") / "../tests/data").resolve()
 
-    search_path = base_path / pv_version / "test_acqs" / "single_image_*"
+    search_path = base_path / pv_version / "raw_test_acqs" / "single_image_*"
 
     return glob(str(search_path))
 
@@ -281,80 +281,88 @@ def get_xml_path(acq_path):
     return xml_search[0]
 
 
-@pytest.fixture(params=get_matching_test_acqs("PV5-8"))
+@pytest.fixture(params=get_matching_raw_test_acqs("PV5-8"))
 def pv58_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
-@pytest.fixture(params=get_matching_test_acqs("PV5-8", is_multi_page_tiff=True))
+@pytest.fixture(params=get_matching_raw_test_acqs("PV5-8", is_multi_page_tiff=True))
 def multi_page_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
-@pytest.fixture(params=get_matching_test_acqs("PV5-8", is_multi_page_tiff=False))
+@pytest.fixture(params=get_matching_raw_test_acqs("PV5-8", is_multi_page_tiff=False))
 def single_page_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
 @pytest.fixture(
-    params=get_matching_test_acqs("PV5-8", is_multi_page_tiff=True, is_complete=True)
+    params=get_matching_raw_test_acqs(
+        "PV5-8", is_multi_page_tiff=True, is_complete=True
+    )
 )
 def multi_page_complete_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
 @pytest.fixture(
-    params=get_matching_test_acqs("PV5-8", is_multi_page_tiff=False, is_complete=True)
+    params=get_matching_raw_test_acqs(
+        "PV5-8", is_multi_page_tiff=False, is_complete=True
+    )
 )
 def single_page_complete_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
 @pytest.fixture(
-    params=get_matching_test_acqs("PV5-8", is_vol=True, is_bidir_z_stroke=True)
+    params=get_matching_raw_test_acqs("PV5-8", is_vol=True, is_bidir_z_stroke=True)
 )
 def bidir_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
 @pytest.fixture(
-    params=get_matching_test_acqs("PV5-8", is_vol=True, is_bidir_z_stroke=False)
+    params=get_matching_raw_test_acqs("PV5-8", is_vol=True, is_bidir_z_stroke=False)
 )
 def singledir_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
-@pytest.fixture(params=get_matching_test_acqs("PV5-8", n_channels=2))
+@pytest.fixture(params=get_matching_raw_test_acqs("PV5-8", n_channels=2))
 def two_channel_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
-@pytest.fixture(params=get_matching_test_acqs("PV5-8", n_channels=3))
+@pytest.fixture(params=get_matching_raw_test_acqs("PV5-8", n_channels=3))
 def three_channel_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
-@pytest.fixture(params=get_matching_test_acqs("PV5-8", is_complete=True, is_vol=True))
+@pytest.fixture(
+    params=get_matching_raw_test_acqs("PV5-8", is_complete=True, is_vol=True)
+)
 def completed_volume_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
-@pytest.fixture(params=get_matching_test_acqs("PV5-8", is_complete=False, is_vol=True))
+@pytest.fixture(
+    params=get_matching_raw_test_acqs("PV5-8", is_complete=False, is_vol=True)
+)
 def aborted_volume_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
-@pytest.fixture(params=get_matching_test_acqs("PV5-8", is_vol=True))
+@pytest.fixture(params=get_matching_raw_test_acqs("PV5-8", is_vol=True))
 def volume_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
-@pytest.fixture(params=get_matching_test_acqs("PV5-8", is_vol=False))
+@pytest.fixture(params=get_matching_raw_test_acqs("PV5-8", is_vol=False))
 def single_plane_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 
-@pytest.fixture(params=get_single_image_test_acqs("PV5-8"))
+@pytest.fixture(params=get_single_image_raw_test_acqs("PV5-8"))
 def single_image_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
