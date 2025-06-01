@@ -273,6 +273,98 @@ def get_single_image_raw_test_acqs(
     return glob(str(search_path))
 
 
+def get_matching_ripped_test_acqs(
+    pv_version: str,
+    is_vol=None,
+    is_multi_page_tiff=None,
+    is_bidir_z_stroke=None,
+    n_channels=None,
+    is_complete=None,
+):
+    """List test acquisitions matching params
+
+    Single images gets its own method since there are no options beyond version
+
+    Args:
+      pv_version: eg 'PV5-8' - str
+      is_vol: True for vol series, False for single plane - bool
+      is_multi_page_tiff: True for multi page tiff, False for single page - bool
+      is_bidir_z_stroke: True for bidir, False for single dir strong - bool
+      n_channels - int
+      is_complete: scan complete - bool
+    """
+    # NOTE: there is a fixture which returns this value, but since this method
+    # is expected during runtime set up of fixtures, I have decided not to use
+    # it, out of concern for weird fixture behavior
+    base_path = (files("brukerbridge") / "../tests/data").resolve()
+
+    if is_vol is None:
+        vol_str = "*"
+    else:
+        if is_vol:
+            vol_str = "vol"
+        else:
+            vol_str = "slc"
+
+    if is_multi_page_tiff is None:
+        tiff_str = "*"
+    else:
+        if is_multi_page_tiff:
+            tiff_str = "multi-page"
+        else:
+            tiff_str = "single-page"
+
+    if is_bidir_z_stroke is None:
+        z_stroke_str = "*"
+    else:
+        if is_bidir_z_stroke:
+            z_stroke_str = "bidir-z-stroke"
+        else:
+            z_stroke_str = "single-z-stroke"
+        if not is_vol:
+            z_stroke_str = "na"
+
+    if n_channels is None:
+        ch_str = "*"
+    else:
+        ch_str = f"{n_channels}ch"
+
+    if is_complete is None:
+        compl_str = "*"
+    else:
+        if is_complete:
+            compl_str = "complete"
+        else:
+            compl_str = "abort"
+
+    search_path = (
+        base_path
+        / pv_version
+        / "ripped_test_acqs"
+        / f"{vol_str}_{tiff_str}_{z_stroke_str}_{ch_str}_{compl_str}"
+    )
+
+    return glob(str(search_path))
+
+
+def get_single_image_ripped_test_acqs(
+    pv_version: str,
+):
+    """List test single image acquisitions
+
+    Args:
+      pv_version: eg 'PV5-8' - str
+    """
+    # NOTE: there is a fixture which returns this value, but since this method
+    # is expected during runtime set up of fixtures, I have decided not to use
+    # it, out of concern for weird fixture behavior
+    base_path = (files("brukerbridge") / "../tests/data").resolve()
+
+    search_path = base_path / pv_version / "ripped_test_acqs" / "single_image_*"
+
+    return glob(str(search_path))
+
+
 def get_xml_path(acq_path):
     xml_search = list(Path(acq_path).glob("*.xml"))
 
@@ -364,6 +456,95 @@ def single_plane_test_acq_xml_path(request):
 
 @pytest.fixture(params=get_single_image_raw_test_acqs("PV5-8"))
 def single_image_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+# =====================
+
+
+@pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8"))
+def pv58_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", is_multi_page_tiff=True))
+def multi_page_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", is_multi_page_tiff=False))
+def single_page_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(
+    params=get_matching_ripped_test_acqs(
+        "PV5-8", is_multi_page_tiff=True, is_complete=True
+    )
+)
+def multi_page_complete_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(
+    params=get_matching_ripped_test_acqs(
+        "PV5-8", is_multi_page_tiff=False, is_complete=True
+    )
+)
+def single_page_complete_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(
+    params=get_matching_ripped_test_acqs("PV5-8", is_vol=True, is_bidir_z_stroke=True)
+)
+def bidir_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(
+    params=get_matching_ripped_test_acqs("PV5-8", is_vol=True, is_bidir_z_stroke=False)
+)
+def singledir_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", n_channels=2))
+def two_channel_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", n_channels=3))
+def three_channel_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(
+    params=get_matching_ripped_test_acqs("PV5-8", is_complete=True, is_vol=True)
+)
+def completed_volume_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(
+    params=get_matching_ripped_test_acqs("PV5-8", is_complete=False, is_vol=True)
+)
+def aborted_volume_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", is_vol=True))
+def volume_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", is_vol=False))
+def single_plane_ripped_test_acq_xml_path(request):
+    return get_xml_path(request.param)
+
+
+@pytest.fixture(params=get_single_image_ripped_test_acqs("PV5-8"))
+def single_image_ripped_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
 

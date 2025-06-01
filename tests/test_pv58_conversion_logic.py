@@ -5,9 +5,10 @@ import pytest
 
 from brukerbridge.constants import AcquisitionType, TiffPageFormat
 from brukerbridge.conversion.pv58 import (
-    create_acquisition_nifti_header, parse_acquisition_channel_info,
-    parse_acquisition_is_bidirectional, parse_acquisition_resolution,
-    parse_acquisition_shape, parse_acquisition_tiff_page_format,
+    convert_acquisition_to_nifti, create_acquisition_nifti_header,
+    parse_acquisition_channel_info, parse_acquisition_is_bidirectional,
+    parse_acquisition_resolution, parse_acquisition_shape,
+    parse_acquisition_tiff_page_format,
     parse_acquisition_tiff_page_format_fallback, parse_acquisition_type)
 
 
@@ -167,3 +168,19 @@ def test_create_acquisition_nifti_header(pv58_test_acq_xml_path):
     assert isinstance(header, nib.nifti2.Nifti2Header)
 
     assert header.get_data_shape() == acq_shape
+
+
+# =======================
+#  tests on ripped data
+# =======================
+
+
+@pytest.mark.slow
+def test_convert_ripped_volume_no_compress_no_chunk(volume_ripped_test_acq_xml_path):
+    convert_acquisition_to_nifti(volume_ripped_test_acq_xml_path, False, -1)
+
+    # ok actually the way to do this is use the channel based fixture, and check that it writes one file per channel
+    # and then for the chunked one check that it writes  same number of chunks per channel
+
+
+p
