@@ -374,14 +374,13 @@ def convert_acquisition_to_nifti(xml_path: Path):
 
 
 # TODO: record more metadata in the header. resolution in particular
-def create_acquisition_nifti_header(xml_path: Path) -> nib.nifti1.Nifti1Header:
+def create_acquisition_nifti_header(xml_path: Path) -> nib.nifti2.Nifti2Header:
     acq_shape, _ = parse_acquisition_shape(xml_path)
 
-    # NOTE: AB 2025/05/29
-    # We'll stick to Nifti1 because the main changes to Nifti2 are switching
-    # some data types from 32 bit to 64 bit which we do not need, but msotly
-    # because I have only tested against Nifti1.
-    header = nib.nifti1.Nifti1Header()
+    # NOTE: nifti2 is required as some fields in the nifti1 header are not large
+    # enough. in particular, the data shape field is a short and it is very
+    # easy to have an image with a dimension larger than 32k in practice.
+    header = nib.nifti2.Nifti2Header()
     header.set_data_dtype(np.uint16)
 
     # NOTE: nifti (or at least nibabel) expects Fortran style column-major

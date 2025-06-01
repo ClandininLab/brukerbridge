@@ -408,7 +408,7 @@ def min_chunk_size_bytes(img_shape):
 
 @pytest.fixture
 def header(img_shape):
-    hdr = nib.nifti1.Nifti1Header()
+    hdr = nib.nifti2.Nifti2Header()
     hdr.set_data_dtype(np.uint16)
     hdr.set_data_shape(img_shape)
     hdr.set_sform(np.eye(4))
@@ -497,7 +497,7 @@ def too_many_frame_gen(frame_gen):
 @pytest.fixture
 def buffered_nii(img_arr):
     aff = np.eye(4)
-    return nib.nifti1.Nifti1Image(img_arr, aff)
+    return nib.nifti2.Nifti2Image(img_arr, aff)
 
 
 @pytest.fixture

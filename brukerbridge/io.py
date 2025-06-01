@@ -40,7 +40,7 @@ def calculate_max_chunk_size(
 
 # TODO: docstring
 def write_nifti_streaming(
-    header: nib.nifti1.Nifti1Header, frame_gen: Iterator[NDArray], output_path: Path
+    header: nib.nifti2.Nifti2Header, frame_gen: Iterator[NDArray], output_path: Path
 ):
     """if output_path is suffixed by .gz  output will be compressed. otherwise it is written uncompressed"""
     with guarded_output_file(output_path) as guarded_output_path:
@@ -81,7 +81,7 @@ def write_nifti_streaming(
 
 
 def write_nifti_streaming_chunked(
-    header: nib.nifti1.Nifti1Header,
+    header: nib.nifti2.Nifti2Header,
     frame_gen: Iterator[NDArray],
     output_path: Path,
     max_image_size: int,
@@ -101,7 +101,7 @@ def write_nifti_streaming_chunked(
         chunk_shape = acq_shape[:-1] + (end_idx - start_idx,)
 
         chunk_header = cast(
-            nib.nifti1.Nifti1Header, nib.nifti1.Nifti1Header.from_header(header)
+            nib.nifti2.Nifti2Header, nib.nifti2.Nifti2Header.from_header(header)
         )
         chunk_header.set_data_shape(chunk_shape)
 

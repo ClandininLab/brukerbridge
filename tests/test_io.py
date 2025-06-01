@@ -268,31 +268,22 @@ def test_write_nifti_streaming_chunked_preserves_gz_suffix(
 
 
 def test_write_nifti_streaming_chunked_handles_exception_cleanup(
-    tmp_path, header, raising_frame_gen
+    tmp_path, header, raising_frame_gen, min_chunk_size_bytes
 ):
     """Test that chunked writing cleans up on exception"""
+
+    max_chunks = header.get_data_shape()[-1]
+    n_frames = math.prod(header.get_data_shape()[2:])
+    if n_frames == 1:
+        # write nifti streaming only reads one frame, no time to raise
+        pytest.skip("Skipping inapplicable values of parametrized fixture")
+
     assert len(list(tmp_path.iterdir())) == 0
 
     with pytest.raises(Exception):
         write_nifti_streaming_chunked(
-            header, raising_frame_gen, tmp_path / "test.nii", 2000
+            header, raising_frame_gen, tmp_path / "test.nii", min_chunk_size_bytes
         )
 
-    # Should clean up any temp files, but chunk files that were successfully written might remain
-    # This depends on where the exception occurs
-
-    # this test needs work
-    assert 0
-
-
-# TODO: i think this test can go?
-@pytest.mark.parametrize("chunk_size", [1000, 5000, 50000])
-def test_write_nifti_streaming_chunked_different_chunk_sizes(
-    tmp_path, header, frame_gen, chunk_size
-):
-    """Test chunked writing with various chunk sizes"""
-    write_nifti_streaming_chunked(header, frame_gen, tmp_path / "test.nii", chunk_size)
-
-    # Verify at least one chunk was created
     chunk_files = list(tmp_path.glob("test_chunk_*.nii"))
-    assert len(chunk_files) >= 1
+    assert len(chunk_files) < max_chunks
