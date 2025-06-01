@@ -14,7 +14,10 @@ from pathlib import Path
 from typing import Deque, Dict, List, Set
 from xml.etree import ElementTree
 
-from brukerbridge.constants import AcquisitionType
+from brukerbridge.constants import (LOG_DIR, MAX_OAK_WORKERS, MAX_RIPPERS,
+                                    MAX_TIFF_WORKERS,
+                                    OAK_TRANSFER_SUFFIX_WHITELIST,
+                                    AcquisitionType)
 from brukerbridge.conversion.common import (CONVERSION_MODULES,
                                             RIPPER_EXECUTABLES,
                                             SUPPORTED_PRAIREVIEW_VERSIONS,
@@ -32,25 +35,6 @@ from brukerbridge.utils import (format_acq_path, log_worker_exception,
 
 logger = logging.getLogger()
 
-LOG_DIR = "C:/Users/User/logs"
-
-SUFFIX_WHITELIST = (
-    ".nii.gz",
-    ".nii",
-    ".csv",
-    ".xml",
-    "json",
-    "tiff",
-    "hdf5",
-)
-
-
-RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.8.64.800\Prairie View\Utilities\Image-Block Ripping Utility.exe"
-
-# max concurrent processes
-MAX_RIPPERS = 2
-MAX_TIFF_WORKERS = 2
-MAX_OAK_WORKERS = 2
 
 
 # set default root dir in __main__.py,override as CLI arg
@@ -228,7 +212,7 @@ def main(root_dir: str):
                         log_queue,
                         acq_path,
                         Path(config["oak_target"]),
-                        SUFFIX_WHITELIST,
+                        OAK_TRANSFER_SUFFIX_WHITELIST,
                         parse_malformed_json_bool(
                             config.get("add_to_build_que", False)
                         ),
