@@ -4,3 +4,4 @@ dist
 __pycache__
 slurm*
 .idea
+tests/data/PV5-8/ripped_test_acqs
