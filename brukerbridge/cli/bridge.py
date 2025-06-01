@@ -24,9 +24,6 @@ from brukerbridge.conversion.common import (CONVERSION_MODULES,
                                             convert_acquisition_to_nifti,
                                             parse_acquisition_pvscan_version)
 from brukerbridge.io import copy_session_metadata
-from brukerbridge.legacy import (convert_tiff_collections_to_nii,
-                                 convert_tiff_collections_to_nii_split,
-                                 convert_tiff_collections_to_stack)
 from brukerbridge.logging import (configure_logging, logger_thread,
                                   worker_process)
 from brukerbridge.transfer_to_oak import start_oak_transfer
@@ -34,7 +31,6 @@ from brukerbridge.utils import (format_acq_path, log_worker_exception,
                                 package_path, parse_malformed_json_bool, touch)
 
 logger = logging.getLogger()
-
 
 
 # set default root dir in __main__.py,override as CLI arg

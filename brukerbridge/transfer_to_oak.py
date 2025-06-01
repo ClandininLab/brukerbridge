@@ -3,7 +3,7 @@ import os
 import time
 from pathlib import Path
 from shutil import copyfile
-from typing import Optional, Tuple
+from typing import Tuple
 
 from brukerbridge.utils import format_acq_path, get_dir_size, touch
 
