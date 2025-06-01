@@ -11,7 +11,8 @@ from numpy.typing import NDArray
 from PIL import Image
 
 from brukerbridge.constants import AcquisitionType, TiffPageFormat
-from brukerbridge.io import write_nifti_streaming
+from brukerbridge.io import (write_nifti_streaming,
+                             write_nifti_streaming_chunked)
 from brukerbridge.utils import format_acq_path
 
 logger = logging.getLogger(__name__)
@@ -20,8 +21,8 @@ logger = logging.getLogger(__name__)
 # I do not have a schema from Bruker so all of the assumptions about the
 # structure of acquistion xmls here are really just educated guesses
 
-# this consant is overloaded in other modules, be careful you don't import the wrong one
 SUPPORTED_PRAIREVIEW_VERSION = "5.8.64.800"
+RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.8.64.800\Prairie View\Utilities\Image-Block Ripping Utility.exe"
 
 AXIS_NAMES = ["XAxis", "YAxis", "ZAxis"]
 
@@ -321,7 +322,8 @@ def parse_acquisition_resolution(xml_path: Path) -> Tuple[float, float, float]:
     return tuple(resolution)
 
 
-def convert_acquisition_to_nifti(xml_path: Path):
+# TODO: docstring
+def convert_acquisition_to_nifti(xml_path: Path, compress: bool, max_image_size: int):
     # loop over channels
     # dispatch to frame gen for acquisition types
     # write some metadata?
@@ -367,10 +369,22 @@ def convert_acquisition_to_nifti(xml_path: Path):
         # nibabel might be doing something stateful. it's not very expensive
         header = create_acquisition_nifti_header(xml_path)
 
-        acq_path = xml_path.parent
-        output_path = acq_path / f"{acq_path.name}_channel_{channel_idx}.nii"
+        if compress:
+            compress_suffix = ".gz"
+        else:
+            compress_suffix = ""
 
-        write_nifti_streaming(header, frame_gen, output_path)
+        acq_path = xml_path.parent
+        output_path = (
+            acq_path / f"{acq_path.name}_channel_{channel_idx}.nii{compress_suffix}"
+        )
+
+        if max_image_size > 0:
+            write_nifti_streaming_chunked(
+                header, frame_gen, output_path, max_image_size
+            )
+        else:
+            write_nifti_streaming(header, frame_gen, output_path)
 
 
 # TODO: record more metadata in the header. resolution in particular

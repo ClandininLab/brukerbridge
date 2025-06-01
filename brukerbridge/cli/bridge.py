@@ -15,8 +15,11 @@ from typing import Deque, Dict, List, Set
 from xml.etree import ElementTree
 
 from brukerbridge.constants import AcquisitionType
-from brukerbridge.conversion.common import parse_pvscan_xml_version
-from brukerbridge.conversion.pv58 import parse_acquisition_type
+from brukerbridge.conversion.common import (CONVERSION_MODULES,
+                                            RIPPER_EXECUTABLES,
+                                            SUPPORTED_PRAIREVIEW_VERSIONS,
+                                            convert_acquisition_to_nifti,
+                                            parse_acquisition_pvscan_version)
 from brukerbridge.io import copy_session_metadata
 from brukerbridge.legacy import (convert_tiff_collections_to_nii,
                                  convert_tiff_collections_to_nii_split,
@@ -41,7 +44,6 @@ SUFFIX_WHITELIST = (
     "hdf5",
 )
 
-SUPPORTED_PRAIREVIEW_VERSION = "5.8.64.800"
 
 RIPPER_EXECUTABLE = r"C:\Program Files\Prairie 5.8.64.800\Prairie View\Utilities\Image-Block Ripping Utility.exe"
 
@@ -67,7 +69,8 @@ def main(root_dir: str):
     oak_io_queue: Deque[Path] = deque()
 
     # acquisitions in any stage of processing
-    in_process_acqs: Set[Path] = set()
+    # acq_path: acq PV version
+    in_process_acqs: Dict[Path, str] = dict()
 
     # acquisitions grouped by imaging session (one level up the org hierarchy)
     in_process_sessions: Dict[Path, Set[Path]] = defaultdict(set)
@@ -100,12 +103,20 @@ def main(root_dir: str):
                 logger = logging.getLogger("brukerbridge.main.enqueue")
 
                 marked_acqs = find_marked_acquisitions(root_dir, in_process_acqs)
-                in_process_acqs.update(marked_acqs)
+                for marked_acq in marked_acqs:
+                    in_process_acqs[marked_acq] = parse_acquisition_pvscan_version(
+                        marked_acq
+                    )
                 rip_queue.extend(marked_acqs)
                 for marked_acq in marked_acqs:
                     sess_path = list(marked_acq.parents)[-3]
                     in_process_sessions[sess_path].add(marked_acq)
                     logger.info("Queued %s for processing", format_acq_path(marked_acq))
+                    logger.debug(
+                        "Queued acq %s has PV version %s",
+                        format_acq_path(marked_acq),
+                        in_process_acqs[marked_acq],
+                    )
 
                 # =================================================
                 # ============ MANAGE RIPPER PROCESSES ============
@@ -139,7 +150,7 @@ def main(root_dir: str):
                     # NOTE: on windows args is converted to a string anyways, no need to parse
                     # NOTE: double quotes on acq_path necessary to handle spaces.
                     ripper_processes[acq_path] = subprocess.Popen(
-                        f'{RIPPER_EXECUTABLE} -RipToInputDirectory -IncludeSubFolders -AddRawFileWithSubFolders "{acq_path}" -Convert -DeleteRaw'
+                        f'{RIPPER_EXECUTABLES[in_process_acqs[acq_path]]} -RipToInputDirectory -IncludeSubFolders -AddRawFileWithSubFolders "{acq_path}" -Convert -DeleteRaw'
                     )
 
                     logger.debug(
@@ -160,43 +171,26 @@ def main(root_dir: str):
                     conversion_target = config["convert_to"]
 
                     if conversion_target == "nii" or conversion_target == "nii.gz":
-                        if parse_malformed_json_bool(config.get("split", False)):
-                            tiff_futures[acq_path] = tiff_executor.submit(
-                                worker_process,
-                                convert_tiff_collections_to_nii_split,
-                                log_queue,
-                                str(acq_path),
-                            )
-                        else:
-                            tiff_futures[acq_path] = tiff_executor.submit(
-                                worker_process,
-                                convert_tiff_collections_to_nii,
-                                log_queue,
-                                str(acq_path),
-                                conversion_target == "nii.gz",
-                            )
+                        max_image_size = config.get("max_image_size", -1)
+                        compress = conversion_target.endswith(".gz")
 
-                        # more precisely, a process has been submitted to the
-                        # queue and will be spawned when the executor has an
-                        # idle worker slot
-                        # TODO: why not just log "queued" then
-                        logger.debug(
-                            "Spawned NIfTI conversion process for %s",
-                            format_acq_path(acq_path),
-                        )
-                    elif conversion_target == "tiff":
+                        # submits a process to the queue queue that will be
+                        # spawned when the executor has an idle worker slot
                         tiff_futures[acq_path] = tiff_executor.submit(
                             worker_process,
-                            convert_tiff_collections_to_stack,
+                            convert_acquisition_to_nifti,
                             log_queue,
-                            str(acq_path),
+                            acq_path,
+                            compress,
+                            max_image_size,
                         )
 
                         logger.debug(
-                            "Spawned tiff conversion process for %s",
+                            "Queued tiff -> NIfTI conversion process for %s",
                             format_acq_path(acq_path),
                         )
                     else:
+                        # TODO: as it stands this acquisition will be marked as complete
                         logger.error(
                             "Invalid 'convert_to' value for %s config",
                             acq_path.parent.parent.name,
@@ -261,7 +255,7 @@ def main(root_dir: str):
                 logger = logging.getLogger("brukerbridge.main.bookkeeping")
 
                 # check for completed acquisitions
-                for acq_path in list(in_process_acqs):
+                for acq_path in list(in_process_acqs.keys()):
                     if acq_path in ripper_processes or acq_path in rip_queue:
                         continue
 
@@ -277,7 +271,7 @@ def main(root_dir: str):
                         "Wrote completion sentinel for %s", format_acq_path(acq_path)
                     )
 
-                    in_process_acqs.remove(acq_path)
+                    del in_process_acqs[acq_path]
 
                 for session_path, acq_paths in list(in_process_sessions.items()):
                     contains_sentinel = [
@@ -285,7 +279,10 @@ def main(root_dir: str):
                     ]
                     if all(contains_sentinel):
                         assert not any(
-                            [acq_path in in_process_acqs for acq_path in acq_paths]
+                            [
+                                acq_path in in_process_acqs.keys()
+                                for acq_path in acq_paths
+                            ]
                         )
 
                         del in_process_sessions[session_path]
@@ -387,34 +384,10 @@ def ripping_complete(acquisition_path: Path) -> bool:
         == 0
     )
 
-    #### Alternative version for checking Voltage Recording MC 20241118
-    # # Raw images still remaining
-    # if len(glob(f"{acquisition_path}/*_RAWDATA_*")) > 0:
-    #     return False
-    # # Raw images done
-    # else:
-    #     # No Voltage Recording or Voltage Recording Processed and raw file removed (sometimes raw file remains)
-    #     if len(glob(f"{acquisition_path}/*_VoltageRecording_[0-9][0-9][0-9]")) == 0:
-    #         logger.debug("No Voltage Recording raw files detected after images ripped. Ripping complete")
-    #         return True
-    #     # Voltage recording raw file exists
-    #     else:
-    #         vr_csvs = sorted(glob(f"{acquisition_path}/*_VoltageRecording_[0-9][0-9][0-9].csv"))
-    #         if len(vr_csvs) == 0:
-    #             logger.debug("Voltage Recording raw file exists, but no VR CSV has been started yet.")
-    #             return False
-    #         max_update_interval = 30 # seconds maximum between csv file update by ripper (assumed)
-    #         time_now = time.time()
-    #         for vr_csv_fn in vr_csvs:
-    #             seconds_since_last_update = time_now - os.path.getmtime(vr_csv_fn)
-    #             if seconds_since_last_update <= max_update_interval:
-    #                 logger.debug(f"{vr_csv_fn.split(os.path.sep)[-1]} still being ripped (last updated {seconds_since_last_update} seconds ago).")
-    #                 return False
-    #         logger.debug(f"All Voltage Recording CSVs haven't been updated in {max_update_interval} seconds. Ripping complete.")
-    #         return True
 
-
-def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[Path]:
+def find_marked_acquisitions(
+    root_dir: str, in_process_acqs: Dict[Path, str]
+) -> List[Path]:
     """Searches for acquisitions under ROOT_DIR marked for processing
 
     A marked acquisition is a directory containing a valid PraireView PVScan
@@ -486,12 +459,6 @@ def find_marked_acquisitions(root_dir: str, in_process_acqs: Set[Path]) -> List[
                     "Error sentinel suffix appended to filename %s. No further attempts to process this acquisition will be made until the error sentinel is removed",
                     format_acq_path(acq_path),
                 )
-            # else:
-            #     marked_acquisitions.append(acq_path)
-            #     logger.warning(
-            #         "Valid xml not found. Ripping might have been completed elsewhere for PV5.8. Proceeding cautiously... (Minseung)",
-            #         format_acq_path(acq_path),
-            #     )
 
     return marked_acquisitions
 
@@ -502,19 +469,18 @@ def contains_valid_xml(acquisition_path: Path) -> bool:
     """
     for xml_path in acquisition_path.glob("*.xml"):
         try:
-            if parse_pvscan_xml_version(xml_path) != SUPPORTED_PRAIREVIEW_VERSION:
+            acq_pv_version = parse_acquisition_pvscan_version(xml_path)
+            if not acq_pv_version in SUPPORTED_PRAIREVIEW_VERSIONS:
                 logger.error(
                     "XML created by unsupported version of PraireView: %s",
                     xml_path,
                 )
                 continue
 
-            # some 5.8 specific logic here so just mandate for now. when
-            # multiple version support is introduced just need to dispatch to
-            # the conversion module for appropriate version
-            assert SUPPORTED_PRAIREVIEW_VERSION == "5.8.64.800"
-
-            if parse_acquisition_type(xml_path) is AcquisitionType.SINGLE_IMAGE:
+            if (
+                CONVERSION_MODULES[acq_pv_version].parse_acquisition_type(xml_path)
+                is AcquisitionType.SINGLE_IMAGE
+            ):
                 logger.debug("Ignoring SingleImage acquisition %s", acquisition_path)
                 return False
             else:

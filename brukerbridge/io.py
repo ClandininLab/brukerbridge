@@ -80,6 +80,7 @@ def write_nifti_streaming(
                 )
 
 
+# TODO: docstring
 def write_nifti_streaming_chunked(
     header: nib.nifti2.Nifti2Header,
     frame_gen: Iterator[NDArray],
@@ -88,7 +89,7 @@ def write_nifti_streaming_chunked(
 ):
     """if output_path is suffixed by .gz  output will be compressed. otherwise it is written uncompressed
 
-    max_image_size gives max size images will be written as. acquisitions that exceed that will be broken up into chunks to fit the limit. Note that the precise size could be larger than this by a few hundred bytes due to the header
+    max_image_size gives max size images will be written as. acquisitions that exceed that will be broken up into chunks to fit the limit. Note that the precise size could be larger than this by a few hundred bytes due to the header. -1 max_image_size disables chunking
     """
     # more java bullshit with no runtime effect, don't worry about it
     acq_shape = cast(
