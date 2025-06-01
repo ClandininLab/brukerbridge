@@ -114,7 +114,7 @@ you can't. the old drives were replaced in July 2024 with the best possible conf
 
 There is a fairly comprehensive set of tests for io and PV5.8 conversion logic. It was designed in such a way to facilitate straightforward expansion to other PV versions. Platform specific tests can be marked as such by decorating them with `pytest.mark.win32`,  `pytest.mark.darwin` or `pytest.mark.linux`. 
 
-You will need `git lfs` to clone the test data. While the raw PV5.8 test data was checked in as is, only a tarball is provided for the ripped PV5.8 data as there many thousands of files. Extract it in situ and rename `mv 20250523_test ripped_test_acq`. Do not attempt to check in the extracted data.
+You will need `git lfs` to clone the test data. While the raw PV5.8 test data was checked in as is, only a tarball is provided for the ripped PV5.8 data as there many thousands of files.  I had to break up into chunks to stay under Github's file size limit. Reassemble with `cat ripped_test_acq.tar.gz.part.* > ripped_test_acq.tar.gz`. Extract it in situ and rename `mv 20250523_test ripped_test_acq`. Do not attempt to check in the extracted data.
 
 ## Support for previous and future PrairieView versions
 
