@@ -5,3 +5,4 @@ __pycache__
 slurm*
 .idea
 tests/data/PV5-8/ripped_test_acqs
+tests/data/PV5-8/20250523_test
