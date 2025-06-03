@@ -114,7 +114,7 @@ you can't. the old drives were replaced in July 2024 with the best possible conf
 
 There is a fairly comprehensive set of tests for io and PV5.8 conversion logic. It was designed in such a way to facilitate straightforward expansion to other PV versions. Platform specific tests can be marked as such by decorating them with `pytest.mark.win32`,  `pytest.mark.darwin` or `pytest.mark.linux`. 
 
-You will need `git lfs` to clone the test data. While the raw PV5.8 test data was checked in as is, only a tarball is provided for the ripped PV5.8 data as there many thousands of files.  I had to break up into chunks to stay under Github's file size limit, and set `lfs` to exclude them by default so switching branches would be fast. Manually fetch them with `git lfs`, reassemble with `cat ripped_test_acq.tar.gz.part.* > ripped_test_acq.tar.gz`. Extract it in situ and rename `mv 20250523_test ripped_test_acq`. Do not attempt to check in the extracted data.
+You will need `git lfs` to clone the test data. While the raw PV5.8 test data was checked in as is, only a tarball is provided for the ripped PV5.8 data as there many thousands of files.  I had to break up into chunks to stay under Github's file size limit, and set `lfs` to exclude them by default so switching branches would be fast. Manually fetch them with `git lfs`, reassemble with `cat ripped_test_acq.tar.gz.part.* > ripped_test_acq.tar.gz`. Extract it in situ and rename `mv 20250523_test ripped_test_acq`. Be sure to recursively disable write permissions for all test data. Do not attempt to check in the extracted data.
 
 ## Support for previous and future PrairieView versions
 
@@ -122,7 +122,11 @@ As of the writing, `brukerbridge` supports only PV5.8. Adding support for PV5.8 
 
 To add support for a future PV version, you would do something like this:
 
-1. Obtain a test data set, ideally covering the same test cases as the PV5.8 test dataset. These acquistions would ideally be as small as possible, but the plane series multi-page acquisitions will have to be fairly long to have more than one page.
+1. Obtain a test data set, ideally covering the same test cases as the PV5.8 test dataset. These acquistions would ideally be as small as possible, but the plane series multi-page acquisitions will have to be fairly long to have more than one page. 
+   1. Create a copy of the raw test dataset and set it aside
+   2. Rip the raw test dataset using the appropriate version of the bruker ripper, manually. Create a tarball of the ripped dataset once it completes.
+   3. Copy the raw test dataset into the repo and name it following the existing conventions. Ensure you have `git lfs` configured before doing so 
+   4. The ripped dataset is cumbersome to check in directly. The extracted version has many thousands of files, and the tarball (probably) exceeds the github file size limit of 4G. Split it into chunks using the `split` command. Test assemble them using `cat` and verify that the `sha256sum` matches the unsplit tarball. Set up a line in the gitignore to ignore the data dir before extracting the files from the tarball. Carefully commit just the split tarball chunks.
 2. Duplicate the PV5.8 fixtures in `tests/conftest.py`
 3. Duplicate the PV5.8 tests in `tests/test_common_conversion_logic.py` and `tests/test_pv58_conversion_logic.py`
 4. Add a module for the new version under `brukerbridge.conversion` and add matching implementations for all methods in `brukerbridge.conversion.pv58`. Add a matching import in `brukerbridge.conversion.__init__`. It is quite possible that many if not all of the methods in `brukerbridge.conversion.pv58` would work out of the box with future versions of PrairieView, however because Bruker does not provide a spec for their XMLs, and because the data integrity for the entire lab is at stake, you should be extremely careful in examining all output files for each test case while inferring the spec. This should take at least a week. 
