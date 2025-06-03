@@ -175,12 +175,69 @@ def test_create_acquisition_nifti_header(pv58_test_acq_xml_path):
 # =======================
 
 
+# extremely slow
 @pytest.mark.slow
-def test_convert_ripped_volume_no_compress_no_chunk(volume_ripped_test_acq_xml_path):
-    convert_acquisition_to_nifti(volume_ripped_test_acq_xml_path, False, -1)
+def test_convert_ripped_2ch_no_compress_no_chunk(
+    tmp_path, two_channel_singledir_ripped_test_acq_xml_path
+):
 
-    # ok actually the way to do this is use the channel based fixture, and check that it writes one file per channel
-    # and then for the chunked one check that it writes  same number of chunks per channel
+    convert_acquisition_to_nifti(
+        two_channel_singledir_ripped_test_acq_xml_path, False, -1
+    )
+
+    # test_acq_channel_1.nii
+
+    output_files = list((tmp_path / "test_acq").glob("*.nii"))
+
+    assert len(output_files) == 2
 
 
-p
+# extremely slow
+@pytest.mark.slow
+def test_convert_ripped_3ch_no_compress_no_chunk(
+    tmp_path, three_channel_singledir_ripped_test_acq_xml_path
+):
+
+    convert_acquisition_to_nifti(
+        three_channel_singledir_ripped_test_acq_xml_path, False, -1
+    )
+
+    # test_acq_channel_1.nii
+
+    output_files = list((tmp_path / "test_acq").glob("*.nii"))
+
+    assert len(output_files) == 3
+
+
+# extremely slow
+@pytest.mark.slow
+def test_convert_ripped_2ch_compress_no_chunk(
+    tmp_path, two_channel_singledir_ripped_test_acq_xml_path
+):
+
+    convert_acquisition_to_nifti(
+        two_channel_singledir_ripped_test_acq_xml_path, True, -1
+    )
+
+    # test_acq_channel_1.nii
+
+    output_files = list((tmp_path / "test_acq").glob("*.nii.gz"))
+
+    assert len(output_files) == 2
+
+
+# extremely slow
+@pytest.mark.slow
+def test_convert_ripped_3ch_compress_no_chunk(
+    tmp_path, three_channel_singledir_ripped_test_acq_xml_path
+):
+
+    convert_acquisition_to_nifti(
+        three_channel_singledir_ripped_test_acq_xml_path, True, -1
+    )
+
+    # test_acq_channel_1.nii
+
+    output_files = list((tmp_path / "test_acq").glob("*.nii.gz"))
+
+    assert len(output_files) == 3

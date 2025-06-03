@@ -43,6 +43,8 @@ markers = [
         "linux",
         "win32"
 ]
+tmp_path_retention_count = 1
+tmp_path_retention_policy = "failed"
 
 
 [tool.isort]

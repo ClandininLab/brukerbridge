@@ -1,9 +1,10 @@
 """ Shared fixtures and test control flow logic
 """
-
 import json
 import math
+import os
 import shutil
+import stat
 import sys
 from glob import glob
 from pathlib import Path
@@ -462,19 +463,36 @@ def single_image_test_acq_xml_path(request):
 # =====================
 
 
+def set_up_ripped(tmp_path, acq_path):
+    """hardlinks into tmp_path, returns xml_path"""
+
+    # it would be too expensive to check all files, so just feebly check we don't have write permissions at the top level
+    assert not os.access(acq_path, os.W_OK)
+
+    test_acq_path = tmp_path / "test_acq"
+    # it would probably be faster to do the tests directly in the test data
+    # dir, and then clean up after, but this already works and is less
+    # precarious
+    shutil.copytree(acq_path, test_acq_path, dirs_exist_ok=True, copy_function=os.link)
+
+    test_acq_path.chmod(test_acq_path.stat().st_mode | stat.S_IWUSR)
+
+    return get_xml_path(tmp_path / "test_acq")
+
+
 @pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8"))
-def pv58_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def pv58_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 @pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", is_multi_page_tiff=True))
-def multi_page_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def multi_page_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 @pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", is_multi_page_tiff=False))
-def single_page_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def single_page_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 @pytest.fixture(
@@ -482,8 +500,8 @@ def single_page_ripped_test_acq_xml_path(request):
         "PV5-8", is_multi_page_tiff=True, is_complete=True
     )
 )
-def multi_page_complete_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def multi_page_complete_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 @pytest.fixture(
@@ -491,61 +509,65 @@ def multi_page_complete_ripped_test_acq_xml_path(request):
         "PV5-8", is_multi_page_tiff=False, is_complete=True
     )
 )
-def single_page_complete_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def single_page_complete_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 @pytest.fixture(
     params=get_matching_ripped_test_acqs("PV5-8", is_vol=True, is_bidir_z_stroke=True)
 )
-def bidir_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def bidir_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 @pytest.fixture(
     params=get_matching_ripped_test_acqs("PV5-8", is_vol=True, is_bidir_z_stroke=False)
 )
-def singledir_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def singledir_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
-@pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", n_channels=2))
-def two_channel_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+@pytest.fixture(
+    params=get_matching_ripped_test_acqs("PV5-8", n_channels=2, is_bidir_z_stroke=False)
+)
+def two_channel_singledir_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
-@pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", n_channels=3))
-def three_channel_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+@pytest.fixture(
+    params=get_matching_ripped_test_acqs("PV5-8", n_channels=3, is_bidir_z_stroke=False)
+)
+def three_channel_singledir_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 @pytest.fixture(
     params=get_matching_ripped_test_acqs("PV5-8", is_complete=True, is_vol=True)
 )
-def completed_volume_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def completed_volume_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 @pytest.fixture(
     params=get_matching_ripped_test_acqs("PV5-8", is_complete=False, is_vol=True)
 )
-def aborted_volume_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def aborted_volume_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 @pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", is_vol=True))
-def volume_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def volume_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 @pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", is_vol=False))
-def single_plane_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def single_plane_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 @pytest.fixture(params=get_single_image_ripped_test_acqs("PV5-8"))
-def single_image_ripped_test_acq_xml_path(request):
-    return get_xml_path(request.param)
+def single_image_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
 
 
 #  =============================================

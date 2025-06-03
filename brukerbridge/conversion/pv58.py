@@ -476,7 +476,7 @@ def vol_series_frame_gen(
 
                 with Image.open(xml_path.parent / frame_path) as frame_img:
                     frame_img_arr = np.array(frame_img)
-                    assert frame_img_arr.shape == acq_shape[:2]
+                    assert frame_img_arr.T.shape == acq_shape[:2]
                     assert frame_img_arr.dtype == np.uint16
 
                     yield frame_img_arr
@@ -509,7 +509,7 @@ def vol_series_frame_gen(
                         frame_img.seek(frame_page - 1)
 
                         frame_img_arr = np.array(frame_img)
-                        assert frame_img_arr.shape == acq_shape[:2]
+                        assert frame_img_arr.T.shape == acq_shape[:2]
                         assert frame_img_arr.dtype == np.uint16
 
                         yield frame_img_arr
@@ -542,15 +542,16 @@ def plane_series_frame_gen(
     assert len(frame_elements) == acq_shape[2]
 
     if tiff_page_format == TiffPageFormat.SINGLE_PAGE:
-        # relative filesystem path to frame image
-        frame_path = frame_rec.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
+        for frame_element in frame_elements:
+            # relative filesystem path to frame image
+            frame_path = frame_element.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
 
-        with Image.open(xml_path.parent / frame_path) as frame_img:
-            frame_img_arr = np.array(frame_img)
-            assert frame_img_arr.shape == acq_shape[:2]
-            assert frame_img_arr.dtype == np.uint16
+            with Image.open(xml_path.parent / frame_path) as frame_img:
+                frame_img_arr = np.array(frame_img)
+                assert frame_img_arr.T.shape == acq_shape[:2]
+                assert frame_img_arr.dtype == np.uint16
 
-            yield frame_img_arr
+                yield frame_img_arr
     # multi-page
     else:
         frame_idx = 0
@@ -570,7 +571,7 @@ def plane_series_frame_gen(
                     frame_img.seek(frame_page - 1)
 
                     frame_img_arr = np.array(frame_img)
-                    assert frame_img_arr.shape == acq_shape[:2]
+                    assert frame_img_arr.T.shape == acq_shape[:2]
                     assert frame_img_arr.dtype == np.uint16
 
                     yield frame_img_arr
