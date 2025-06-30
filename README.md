@@ -33,6 +33,7 @@ Within the json the following fields are mandatory:
 Optional fields:
 - `max_image_size`: int. Desired maximum image size of converted images in bytes. Acquisitions which exceed this size limit will be split into chunks of less than `max_image_size` bytes. Under rare circumstance chunks might be larger than this limit, but only by about 500 bytes. `bridge` no longer needs to buffer acquisitions in memory, so the only reason to use this setting if you are doing very large recordings and expect that your downstream processing won't fit into memory on sherlock. 
 - `add_to_build_que`: bool. legacy. it's a brainsss thing.
+- `depth`: int. Depth of your file hierarchy. eg depth 3 would correspond to a dir structure like `levitsky/[date]/[fly]/[channel]/Tseries*`.
 
 
 Deprecated fields:
