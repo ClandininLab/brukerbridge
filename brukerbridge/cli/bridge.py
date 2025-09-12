@@ -45,6 +45,7 @@ PRARIEVIEW_VERSION_RIPPER_DICT = {
     "5.8.64.800": r"C:\Program Files\Prairie 5.8.64.800\Prairie View\Utilities\Image-Block Ripping Utility.exe",
     "5.8.64.814": r"C:\Program Files\Prairie 5.8.64.814\Prairie View\Utilities\Image-Block Ripping Utility.exe",
     "5.8.64.818": r"C:\Program Files\Prairie 5.8.64.818\Prairie View\Utilities\Image-Block Ripping Utility.exe",
+    "5.8.64.900": r"C:\Program Files\Prairie 5.8.64.900\Prairie View\Utilities\Image-Block Ripping Utility.exe",
 }
 # max concurrent processes
 MAX_RIPPERS = 2
