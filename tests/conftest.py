@@ -569,6 +569,10 @@ def single_plane_ripped_test_acq_xml_path(request, tmp_path):
 def single_image_ripped_test_acq_xml_path(request, tmp_path):
     return set_up_ripped(tmp_path, request.param)
 
+@pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", is_complete=True, is_vol=True, is_bidir_z_stroke=False))
+def completed_volume_singledir_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
+
 
 #  =============================================
 #  ====== fixtures for streaming io tests ======

@@ -379,6 +379,7 @@ def convert_acquisition_to_nifti(xml_path: Path, compress: bool, max_image_size:
             acq_path / f"{acq_path.name}_channel_{channel_idx}.nii{compress_suffix}"
         )
 
+
         if max_image_size > 0:
             write_nifti_streaming_chunked(
                 header, frame_gen, output_path, max_image_size
@@ -475,8 +476,8 @@ def vol_series_frame_gen(
                 frame_path = frame_element.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
 
                 with Image.open(xml_path.parent / frame_path) as frame_img:
-                    frame_img_arr = np.array(frame_img)
-                    assert frame_img_arr.T.shape == acq_shape[:2]
+                    frame_img_arr = np.array(frame_img).T
+                    assert frame_img_arr.shape == acq_shape[:2]
                     assert frame_img_arr.dtype == np.uint16
 
                     yield frame_img_arr
@@ -508,8 +509,8 @@ def vol_series_frame_gen(
                         # xml pages are one-indexed, pillow uses zero indexing
                         frame_img.seek(frame_page - 1)
 
-                        frame_img_arr = np.array(frame_img)
-                        assert frame_img_arr.T.shape == acq_shape[:2]
+                        frame_img_arr = np.array(frame_img).T
+                        assert frame_img_arr.shape == acq_shape[:2]
                         assert frame_img_arr.dtype == np.uint16
 
                         yield frame_img_arr
@@ -547,8 +548,8 @@ def plane_series_frame_gen(
             frame_path = frame_element.find(f"./File[@channel='{channel}']").attrib["filename"]  # type: ignore
 
             with Image.open(xml_path.parent / frame_path) as frame_img:
-                frame_img_arr = np.array(frame_img)
-                assert frame_img_arr.T.shape == acq_shape[:2]
+                frame_img_arr = np.array(frame_img).T
+                assert frame_img_arr.shape == acq_shape[:2]
                 assert frame_img_arr.dtype == np.uint16
 
                 yield frame_img_arr
@@ -570,8 +571,8 @@ def plane_series_frame_gen(
                     # xml pages are one-indexed, pillow uses zero indexing
                     frame_img.seek(frame_page - 1)
 
-                    frame_img_arr = np.array(frame_img)
-                    assert frame_img_arr.T.shape == acq_shape[:2]
+                    frame_img_arr = np.array(frame_img).T
+                    assert frame_img_arr.shape == acq_shape[:2]
                     assert frame_img_arr.dtype == np.uint16
 
                     yield frame_img_arr
