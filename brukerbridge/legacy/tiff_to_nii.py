@@ -151,12 +151,9 @@ def tiff_to_nii(xml_file: str, gzip: bool = False):
         save_name = xml_file[:-4] + "_channel_{}".format(channel + 1) + ".nii"
         if gzip:
             save_name += ".gz"
-        if isVolumeSeries:
-            img = nib.nifti1.Nifti1Image(
-                image_array, aff
-            )  # 32 bit: maxes out at 32767 in any one dimension
-        else:
-            img = nib.nifti2.Nifti2Image(image_array, aff)  # 64 bit
+        # NOTE Yilin 2026/01/07: Previously Nifti1 is adopted for volume series.
+        # Now unifying all to Nifti2.
+        img = nib.nifti2.Nifti2Image(image_array, aff)  # 64 bit
         image_array = None  # for memory
         logger.debug("%s, saving nii as %s", xml_file, save_name)
         img.to_filename(save_name)
