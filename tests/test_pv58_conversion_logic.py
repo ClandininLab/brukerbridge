@@ -179,11 +179,10 @@ def test_create_acquisition_nifti_header(pv58_test_acq_xml_path):
 #  tests on ripped data
 # =======================
 
-
 # extremely slow
 @pytest.mark.slow
-def test_convert_completed_volume_singledir_no_compress_no_chunk(
-    tmp_path, completed_volume_singledir_ripped_test_acq_xml_path
+def test_ripped(
+    tmp_path, pv58_ripped_test_acq_xml_path
 ):
     tmp_rearch_path = tmp_path / "test_acq" / "rearch"
     tmp_legacy_path = tmp_path / "test_acq" / "legacy"
@@ -191,7 +190,7 @@ def test_convert_completed_volume_singledir_no_compress_no_chunk(
     os.makedirs(tmp_legacy_path)
 
     convert_acquisition_to_nifti(
-        completed_volume_singledir_ripped_test_acq_xml_path, False, -1
+        pv58_ripped_test_acq_xml_path, False, -1
     )
     output_files = list((tmp_path / "test_acq").glob("*.nii"))
     for f in output_files:
@@ -199,7 +198,7 @@ def test_convert_completed_volume_singledir_no_compress_no_chunk(
         shutil.move(f, tmp_rearch_path / new_name)
 
     warnings.simplefilter(action='ignore', category=FutureWarning)
-    convert_tiff_collections_to_nii(str(completed_volume_singledir_ripped_test_acq_xml_path.parent), False)
+    convert_tiff_collections_to_nii(str(pv58_ripped_test_acq_xml_path.parent), False)
     warnings.simplefilter(action='default', category=FutureWarning)
     output_files = list((tmp_path / "test_acq").glob("*.nii"))
     for f in output_files:
@@ -208,69 +207,3 @@ def test_convert_completed_volume_singledir_no_compress_no_chunk(
 
     result = subprocess.run(["diff", "-r", str(tmp_rearch_path), str(tmp_legacy_path)], capture_output=True, text=True, check=True)
     assert result.returncode == 0
-
-# extremely slow
-@pytest.mark.slow
-def test_convert_ripped_2ch_no_compress_no_chunk(
-    tmp_path, two_channel_singledir_ripped_test_acq_xml_path
-):
-
-    convert_acquisition_to_nifti(
-        two_channel_singledir_ripped_test_acq_xml_path, False, -1
-    )
-
-    # test_acq_channel_1.nii
-
-    output_files = list((tmp_path / "test_acq").glob("*.nii"))
-
-    assert len(output_files) == 2
-
-# extremely slow
-@pytest.mark.slow
-def test_convert_ripped_3ch_no_compress_no_chunk(
-    tmp_path, three_channel_singledir_ripped_test_acq_xml_path
-):
-
-    convert_acquisition_to_nifti(
-        three_channel_singledir_ripped_test_acq_xml_path, False, -1
-    )
-
-    # test_acq_channel_1.nii
-
-    output_files = list((tmp_path / "test_acq").glob("*.nii"))
-
-    assert len(output_files) == 3
-
-
-# extremely slow
-@pytest.mark.slow
-def test_convert_ripped_2ch_compress_no_chunk(
-    tmp_path, two_channel_singledir_ripped_test_acq_xml_path
-):
-
-    convert_acquisition_to_nifti(
-        two_channel_singledir_ripped_test_acq_xml_path, True, -1
-    )
-
-    # test_acq_channel_1.nii
-
-    output_files = list((tmp_path / "test_acq").glob("*.nii.gz"))
-
-    assert len(output_files) == 2
-
-
-# extremely slow
-@pytest.mark.slow
-def test_convert_ripped_3ch_compress_no_chunk(
-    tmp_path, three_channel_singledir_ripped_test_acq_xml_path
-):
-
-    convert_acquisition_to_nifti(
-        three_channel_singledir_ripped_test_acq_xml_path, True, -1
-    )
-
-    # test_acq_channel_1.nii
-
-    output_files = list((tmp_path / "test_acq").glob("*.nii.gz"))
-
-    assert len(output_files) == 3

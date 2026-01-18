@@ -280,7 +280,7 @@ def get_matching_ripped_test_acqs(
     is_multi_page_tiff=None,
     is_bidir_z_stroke=None,
     n_channels=None,
-    is_complete=None,
+    is_complete=None
 ):
     """List test acquisitions matching params
 
@@ -297,6 +297,7 @@ def get_matching_ripped_test_acqs(
     # NOTE: there is a fixture which returns this value, but since this method
     # is expected during runtime set up of fixtures, I have decided not to use
     # it, out of concern for weird fixture behavior
+    # NOTE: single image testcases are excluded
     base_path = (files("brukerbridge") / "../tests/data").resolve()
 
     if is_vol is None:
@@ -345,8 +346,8 @@ def get_matching_ripped_test_acqs(
         / f"{vol_str}_{tiff_str}_{z_stroke_str}_{ch_str}_{compl_str}"
     )
 
-    return glob(str(search_path))
-
+    all_files = glob(str(search_path))
+    return [f for f in all_files if "single_image" not in os.path.basename(f)]
 
 def get_single_image_ripped_test_acqs(
     pv_version: str,
@@ -437,7 +438,6 @@ def three_channel_test_acq_xml_path(request):
 def completed_volume_test_acq_xml_path(request):
     return get_xml_path(request.param)
 
-
 @pytest.fixture(
     params=get_matching_raw_test_acqs("PV5-8", is_complete=False, is_vol=True)
 )
@@ -473,7 +473,7 @@ def set_up_ripped(tmp_path, acq_path):
     # it would probably be faster to do the tests directly in the test data
     # dir, and then clean up after, but this already works and is less
     # precarious
-    shutil.copytree(acq_path, test_acq_path, dirs_exist_ok=True, copy_function=os.link)
+    shutil.copytree(acq_path, test_acq_path, dirs_exist_ok=True, symlinks=True)
 
     test_acq_path.chmod(test_acq_path.stat().st_mode | stat.S_IWUSR)
 
@@ -482,6 +482,13 @@ def set_up_ripped(tmp_path, acq_path):
 
 @pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8"))
 def pv58_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
+
+
+@pytest.fixture(
+    params=get_matching_ripped_test_acqs("PV5-8", is_complete=False, is_vol=True)
+)
+def ripped_aborted_volume_test_acq_xml_path(request, tmp_path):
     return set_up_ripped(tmp_path, request.param)
 
 
@@ -501,6 +508,14 @@ def single_page_ripped_test_acq_xml_path(request, tmp_path):
     )
 )
 def multi_page_complete_ripped_test_acq_xml_path(request, tmp_path):
+    return set_up_ripped(tmp_path, request.param)
+
+@pytest.fixture(
+    params=get_matching_ripped_test_acqs(
+        "PV5-8", is_multi_page_tiff=True, is_complete=True, is_vol=False
+    )
+)
+def slc_multi_page_complete_ripped_test_acq_xml_path(request, tmp_path):
     return set_up_ripped(tmp_path, request.param)
 
 
@@ -572,7 +587,6 @@ def single_image_ripped_test_acq_xml_path(request, tmp_path):
 @pytest.fixture(params=get_matching_ripped_test_acqs("PV5-8", is_complete=True, is_vol=True, is_bidir_z_stroke=False))
 def completed_volume_singledir_ripped_test_acq_xml_path(request, tmp_path):
     return set_up_ripped(tmp_path, request.param)
-
 
 #  =============================================
 #  ====== fixtures for streaming io tests ======

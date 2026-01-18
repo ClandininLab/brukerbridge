@@ -439,25 +439,33 @@ def vol_series_frame_gen(
         # the list is traversed by the generator for Sequences with an even
         # cycle attribute
         # NOTE AB 2025/05/29: this continues to be true for PV5.8
-        raise NotImplementedError(
-            (
-                "Support for bidirectional scans not supported due to Bruker sketchiness. "
-                "See the source where this error was thrown for an explanation."
-            )
-        )
+        # NOTE YS 2026/01/12: In order to enable the rearch branch to production,
+        # backward-compatibility is required. Adding support with the awareness of
+        # above xml issue. In the future, ome tiff should be adopted.
+        logger.info("Volume acquisition %s is bidirectionalZ, please be aware of Bruker xml file sketchiness.", xml_path)
 
     tiff_page_format = parse_acquisition_tiff_page_format(xml_path)
 
     acq_root = ElementTree.parse(xml_path).getroot()
 
     sequence_elements = acq_root.findall("./Sequence")
-    assert len(sequence_elements) == acq_shape[3]
 
     # ordering of elements within an xml file is not guaranteed.
     # cycle attribute is assumed to give ordering of sequences within an acquisition
     sequence_elements = sorted(
         sequence_elements, key=lambda sequence: int(sequence.attrib["cycle"])
     )
+
+    acq_shape, force_terminated = parse_acquisition_shape(xml_path)
+    # NOTE Yilin 2026/01/14: Bruker ripping software seems buggy if
+    # multiPageTiff + abort, sometimes the last incomplete sequence
+    # is stored in previous sequence's tiff.
+    # for example multi-page_single-z-stroke_2ch_abort from testcases
+    # For current conversion implementation, this won't cause issue though
+    if force_terminated:
+        sequence_elements.pop()
+
+    assert len(sequence_elements) == acq_shape[3]
 
     for sequence_element in sequence_elements:
         frame_elements = sequence_element.findall("./Frame")
@@ -466,6 +474,25 @@ def vol_series_frame_gen(
         frame_elements = sorted(
             frame_elements, key=lambda frame: int(frame.attrib["index"])
         )
+
+        # determine if current Z is ascending or descending
+        z_stack = []
+        for frame_element in frame_elements:
+            piezo_node = frame_element.find(
+                ".//PVStateValue[@key='positionCurrent']"
+                "/SubindexedValues[@index='ZAxis']"
+                "/SubindexedValue[@description='Bruker 400 μm Piezo']"
+            )
+            if piezo_node is not None:
+                z_stack.append(float(piezo_node.attrib["value"]))
+        if not z_stack:
+            logger.error("Failed to find z axis information of current series", xml_path)
+        if z_stack == sorted(z_stack, reverse=True): # descending, reorder to ascending
+            frame_elements = sorted(
+                frame_elements, key=lambda frame: int(frame.attrib["index"]), reverse=True
+            )
+        elif z_stack != sorted(z_stack): # not descending, not ascending
+            logger.error("Z stack is neither ascending nor descending, keeping data as-is", xml_path)
 
         # parse_acquisition_shape only checks the last couple of Sequences for this condition
         assert len(frame_elements) == acq_shape[2]
@@ -516,7 +543,6 @@ def vol_series_frame_gen(
                         yield frame_img_arr
 
                         frame_idx += 1
-
                         if frame_idx < len(frame_elements):
                             frame_file_element = frame_elements[frame_idx].find(
                                 f"./File[@channel='{channel}']"

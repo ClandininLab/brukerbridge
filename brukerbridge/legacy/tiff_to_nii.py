@@ -81,13 +81,19 @@ def tiff_to_nii(xml_file: str, gzip: bool = False):
         last_num_z = None
         image_array = np.zeros((num_timepoints, num_z, num_y, num_x), dtype=np.uint16)
         # saved as a single big tif for all time steps
+        offset = 0
+        curr_timepoint = 0
         if isMultiPageTiff and (isVolumeSeries is False):
-            frames = [sequences[0].findall("Frame")[0]]
-            files = frames[0].findall("File")
-            filename = files[channel].get("filename")
-            fullfile = os.path.join(data_dir, filename)  # type: ignore
-            img = io.imread(fullfile, plugin="pil")  # shape = t, y, x
-            image_array[:, 0, :, :] = img
+            while curr_timepoint < num_timepoints:
+                frames = sequences[0].findall("Frame")
+                files = frames[offset].findall("File")
+                filename = files[channel].get("filename")
+                fullfile = os.path.join(data_dir, filename)  # type: ignore
+                img = io.imread(fullfile, plugin="pil")  # shape = t, y, x
+                for j in range(img.shape[0]):
+                    image_array[j + offset, 0, :, :] = img[j]
+                    curr_timepoint = curr_timepoint + 1
+                offset = offset + img.shape[0]
         else:
             # loop over time steps to load one tif at a time
             for i in range(num_timepoints):
@@ -113,12 +119,24 @@ def tiff_to_nii(xml_file: str, gzip: bool = False):
                 else:  # Plane series: Get frame
                     frames = [sequences[0].findall("Frame")[i]]
 
+                # NOTE Yilin 2026/01/14: Bruker ripping software seems buggy if
+                # multiPageTiff + abort, sometimes the last incomplete sequence
+                # is stored in previous sequence's tiff
+                # for example multi-page_single-z-stroke_2ch_abort from testcases
                 if isMultiPageTiff:
                     files = frames[0].findall("File")
                     filename = files[channel].get("filename")
                     fullfile = os.path.join(data_dir, filename)  # type: ignore
                     img = io.imread(fullfile, plugin="pil")  # shape = z, y, x
-                    image_array[i, :, :, :] = img
+                    # Workaround: truncate img if is larger than z in z-axis
+                    if img.shape[0] > num_z:
+                        img = img[:num_z]
+                    # Flip frame order if a bidirectionalZ upstroke
+                    if isBidirectionalZ and (i % 2 !=0):
+                        for j in range(len(frames)):
+                            image_array[i, j, :, :] = img[len(frames)-j-1]
+                    else:
+                        image_array[i, :, :, :] = img
                 else:
                     # loop over depth (z-dim)
                     for j, frame in enumerate(frames):
