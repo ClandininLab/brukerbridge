@@ -348,6 +348,8 @@ def get_matching_ripped_test_acqs(
 
     all_files = glob(str(search_path))
     return [f for f in all_files if "single_image" not in os.path.basename(f)]
+    #If we want fast tests only
+    #return [f for f in all_files if "single_image" not in os.path.basename(f) and "slc_multi" not in os.path.basename(f)]
 
 def get_single_image_ripped_test_acqs(
     pv_version: str,

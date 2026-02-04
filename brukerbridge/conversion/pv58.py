@@ -14,6 +14,9 @@ from brukerbridge.constants import AcquisitionType, TiffPageFormat
 from brukerbridge.io import (write_nifti_streaming,
                              write_nifti_streaming_chunked)
 from brukerbridge.utils import format_acq_path
+import tifffile
+import warnings
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -321,6 +324,53 @@ def parse_acquisition_resolution(xml_path: Path) -> Tuple[float, float, float]:
 
     return tuple(resolution)
 
+def general_frame_gen(tiff, channel_idx, z_pages_per_channel, channel_amount, bidirZ):
+    start = z_pages_per_channel * channel_idx
+    flip = False
+    for i, page in enumerate(tiff.series[0].pages):
+        if i >= start and i < start + z_pages_per_channel:
+            if flip:
+                yield tiff.series[0].pages[start+list(range(z_pages_per_channel-1, -1, -1))[i-start]].asarray().T
+            else:
+                yield page.asarray().T
+        if i == start + z_pages_per_channel - 1:
+            start += z_pages_per_channel * channel_amount
+            if bidirZ:
+                flip = not flip
+
+# convert from ome tiff to nii, with minimum dependency on bruker XML file
+def convert_to_nii(xml_path: Path):
+    companion = next(xml_path.parent.glob("*.companion.ome"), None)
+    if companion:
+        companion = open(companion, 'r').read()
+    # find the main tiff with overall information
+    tiff_path = next(xml_path.parent.glob("*Cycle00001_Ch1_000001.ome.tif"), None)
+    tiff = tifffile.TiffFile(tiff_path, omexml=companion)
+    assert len(tiff.series) == 1
+
+    #NOTE: volume-series is XYZCT, time-series is XYCT
+    #NOTE: a transpose is introduced by image to numpy
+    assert tiff.series[0].axes in ("TCZYX", "TCYX")
+    if tiff.series[0].axes == "TCZYX":
+        pages_per_channel = tiff.series[0].shape[2]
+    elif tiff.series[0].axes == "TCYX":
+        pages_per_channel = 1
+    #suppress warning caused by not loading the entire dataset to memory
+    warnings.filterwarnings("ignore", message=".*reading array from closed file.*", category=UserWarning)
+    for channel_idx in range(tiff.series[0].shape[1]):
+        acq_type = parse_acquisition_type(xml_path)
+        if acq_type == AcquisitionType.VOL_SERIES:
+            bidirZ = parse_acquisition_is_bidirectional(xml_path)
+        else:
+            bidirZ = False
+        frame_gen = general_frame_gen(tiff, channel_idx, pages_per_channel, tiff.series[0].shape[1], bidirZ)
+        acq_path = xml_path.parent
+        output_path = (
+            acq_path / f"{acq_path.name}_channel_{channel_idx+1}.nii"
+        )
+        header = create_acquisition_nifti_header(xml_path)
+        write_nifti_streaming(header, frame_gen, output_path)
+    warnings.resetwarnings()
 
 # TODO: docstring
 def convert_acquisition_to_nifti(xml_path: Path, compress: bool, max_image_size: int):

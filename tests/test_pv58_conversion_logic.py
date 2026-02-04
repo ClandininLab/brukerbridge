@@ -9,7 +9,7 @@ import warnings
 
 from brukerbridge.constants import AcquisitionType, TiffPageFormat
 from brukerbridge.conversion.pv58 import (
-    convert_acquisition_to_nifti, create_acquisition_nifti_header,
+    convert_to_nii, convert_acquisition_to_nifti, create_acquisition_nifti_header,
     parse_acquisition_channel_info, parse_acquisition_is_bidirectional,
     parse_acquisition_resolution, parse_acquisition_shape,
     parse_acquisition_tiff_page_format,
@@ -197,9 +197,7 @@ def test_ripped(
         new_name = f.name.split("_channel_", 1)[1]
         shutil.move(f, tmp_rearch_path / new_name)
 
-    warnings.simplefilter(action='ignore', category=FutureWarning)
-    convert_tiff_collections_to_nii(str(pv58_ripped_test_acq_xml_path.parent), False)
-    warnings.simplefilter(action='default', category=FutureWarning)
+    convert_to_nii(pv58_ripped_test_acq_xml_path)
     output_files = list((tmp_path / "test_acq").glob("*.nii"))
     for f in output_files:
         new_name = f.name.split("_channel_", 1)[1]

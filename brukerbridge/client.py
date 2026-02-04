@@ -1,3 +1,4 @@
+import sys
 import os
 import shutil
 from socket import socket
@@ -16,6 +17,9 @@ CHUNKSIZE = 1_000_000
 ### Brukerbridge computer ###
 host = "171.65.17.84"
 port = 5001
+if len(sys.argv) > 1:
+    if sys.argv[1] == 'Jr':
+        port = 5002
 
 ##################################
 ### WHAT DIRECTORY TO PROCESS? ###

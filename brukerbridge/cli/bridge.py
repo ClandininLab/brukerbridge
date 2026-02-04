@@ -24,7 +24,7 @@ from brukerbridge.conversion.common import (CONVERSION_MODULES,
                                             convert_acquisition_to_nifti,
                                             parse_acquisition_pvscan_version)
 from brukerbridge.io import copy_session_metadata
-from brukerbridge.logging import (configure_logging, logger_thread,
+from brukerbridge.bridge_logging import (configure_logging, logger_thread,
                                   worker_process)
 from brukerbridge.transfer_to_oak import start_oak_transfer
 from brukerbridge.utils import (format_acq_path, log_worker_exception,

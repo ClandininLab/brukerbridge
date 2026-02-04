@@ -1,3 +1,4 @@
+import sys
 import os
 import time
 from socket import socket
@@ -10,6 +11,9 @@ CHUNKSIZE = 1_000_000
 SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 5001
 target_directory = "D:/"
+if len(sys.argv) > 1 and sys.argv[1] == 'Jr':
+    SERVER_PORT = 5002
+    target_directory += "Jr"
 
 ####
 # SERVER_HOST = ""
@@ -139,7 +143,10 @@ while True:
     if path is not None:
         dir_to_flag = "\\".join(path.split("\\")[:2])
         print(dir_to_flag, flush=True)
-        os.rename(dir_to_flag, dir_to_flag + "__queue__")
+        if len(sys.argv) > 1 and sys.argv[1] == 'Jr':
+            os.rename(dir_to_flag, dir_to_flag + "_Jr__queue__")
+        else:
+            os.rename(dir_to_flag, dir_to_flag + "__queue__")
     else:
         print("The empty transfer someone requested was dutifully not carried out")
 
