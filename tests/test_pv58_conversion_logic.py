@@ -9,12 +9,13 @@ import warnings
 
 from brukerbridge.constants import AcquisitionType, TiffPageFormat
 from brukerbridge.conversion.pv58 import (
-    convert_to_nii, convert_acquisition_to_nifti, create_acquisition_nifti_header,
+    convert_acquisition_to_nifti, create_acquisition_nifti_header,
     parse_acquisition_channel_info, parse_acquisition_is_bidirectional,
     parse_acquisition_resolution, parse_acquisition_shape,
     parse_acquisition_tiff_page_format,
     parse_acquisition_tiff_page_format_fallback, parse_acquisition_type)
 from brukerbridge.legacy import convert_tiff_collections_to_nii
+from brukerbridge.sherlock.convert import convert_to_nii
 
 
 def test_parse_acquisition_type_detects_volume_series(volume_test_acq_xml_path):
@@ -195,13 +196,13 @@ def test_ripped(
     output_files = list((tmp_path / "test_acq").glob("*.nii"))
     for f in output_files:
         new_name = f.name.split("_channel_", 1)[1]
-        shutil.move(f, tmp_rearch_path / new_name)
+        shutil.move(f, tmp_legacy_path / new_name)
 
     convert_to_nii(pv58_ripped_test_acq_xml_path)
     output_files = list((tmp_path / "test_acq").glob("*.nii"))
     for f in output_files:
         new_name = f.name.split("_channel_", 1)[1]
-        shutil.move(f, tmp_legacy_path / new_name)
+        shutil.move(f, tmp_rearch_path / new_name)
 
     result = subprocess.run(["diff", "-r", str(tmp_rearch_path), str(tmp_legacy_path)], capture_output=True, text=True, check=True)
     assert result.returncode == 0
