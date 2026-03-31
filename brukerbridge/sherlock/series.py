@@ -98,7 +98,6 @@ class series:
       logger.info("Using ripping utillity: %s", self.ripping_utility_path)
       my_env = os.environ.copy()
       my_env["WINEPREFIX"] = str(self.scratch_path.parent)+'/.wine'
-      #command = ['singularity', 'exec', '-B', f'{my_env["L_SCRATCH"]}:{my_env["L_SCRATCH"]},{my_env["GROUP_SCRATCH"]}:{my_env["GROUP_SCRATCH"]},/tmp:/var/lib/xkb']
       command = ['singularity', 'exec', '-B', f'{my_env["L_SCRATCH"]}:{my_env["L_SCRATCH"]},{my_env["OAK"]}:{my_env["OAK"]},/tmp:/var/lib/xkb']
       command.extend([str(self.wine_container_path), 'xvfb-run', '-a', 'wine'])
       command.extend([str(self.ripping_utility_path), '-IncludeSubFolders', '-AddRawFileWithSubFolders', 'Z:'+str(PureWindowsPath(path))])
@@ -157,7 +156,8 @@ class series:
           file_path.unlink()
 
     def process(self):
-      #TODO: if is converted, no need to do again
+      if self.check_flag('converted'):
+        return
       if not self.get_xml_path() or not self.ripping_utility_path:
         self.mark_flag('failed')
         return
@@ -180,7 +180,7 @@ class series:
         """Create a dotfile flag to query state persistence."""
         (self.path / f".{name}").touch()
 
-    def check_flag(self, path, name):
+    def check_flag(self, name):
         return (self.path / f".{name}").exists()
 
 #===============================

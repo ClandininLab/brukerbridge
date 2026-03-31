@@ -61,11 +61,9 @@ class acquisition:
         Process all discovered series.
         """
         #TODO: determine the job time based on file size
-        submitted_jobids = []
         submitted_jobnames = []
         #NOTE: increasing memory for shutil.copy(), not sure why for now
-        command_base = ['sbatch', '--parsable', '--partition=trc', '--ntasks=1', '--cpus-per-task=1', '--time=10:00', '--mem=3GB']
-        #command_base = ['sbatch', '--parsable', '--partition=owners', '--ntasks=1', '--cpus-per-task=1', '--time=10:00', '--mem=3GB']
+        command_base = ['sbatch', '--parsable', '--partition=owners', '--ntasks=1', '--cpus-per-task=1', '--time=10:00', '--mem=3GB']
         for path in self.series_list:
             #otherwise it's a reference, not a copy
             command = command_base[:]
@@ -76,17 +74,13 @@ class acquisition:
             logger.info(f"submitting sbatch job using command: {command}")
             result = subprocess.run(command, capture_output=True, text=True)
             job_id = result.stdout.strip()
-            submitted_jobids.append(job_id)
             submitted_jobnames.append(str(path)+'_brukerbridge')
             logger.info(f"Submitted {str(path)} processing job with ID {job_id}")
 
-        logger.info(f"Waiting for jobs: {', '.join(submitted_jobids)}")
         while True:
             # Check status of submitted jobs
-            # TODO: consider owners partition, where jobs could be killed and rescheduled
-            # idea: job name is always <full_path>_brukerbridge
             status = subprocess.run(
-                ['squeue', '-j', ','.join(submitted_jobids)],
+                ['squeue', '-n', ','.join(submitted_jobnames)],
                 capture_output=True,
                 text=True
             )
