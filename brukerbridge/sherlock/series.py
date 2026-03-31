@@ -16,12 +16,12 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class series:
-    def __init__(self, path: Path, use_lscratch=False):
+    def __init__(self, series_path: Path, dependency_path: Path, use_lscratch=False):
         #TODO: generalize
         #TODO: PV 5.5 is still in use, consider it
-        self.path = path
+        self.path = series_path
         self.use_lscratch=use_lscratch
-        self.dependency_root = Path("/scratch/groups/trc/yilin/simg")
+        self.dependency_root = dependency_path
         self.ripping_utility_root = self.dependency_root / "Utilities_root"
         self.wine_container_path = self.dependency_root / "docker-wine_latest.sif"
         self.wineprefix_path = self.dependency_root / "wineprefix.tar.gz"
@@ -138,6 +138,9 @@ class series:
       logger.info("Moving conversion results from %s to %s", str(self.scratch_path), str(self.path))
       for file_path in list(self.scratch_path.glob("*.nii")) + list(self.scratch_path.glob("*.csv")):
         logger.info("Moving %s to %s", str(file_path), str(self.path))
+        if os.path.exists(self.path / file_path.name) and os.path.isfile(self.path / file_path.name):
+          logger.info(f"file {str(self.path / file_path.name)} exists, removing first")
+          os.remove(self.path / file_path.name)
         shutil.move(file_path, self.path)
       #TODO: enable deleting raw file as a switch
       #for file_path in list(self.path.glob('*Filelist.txt')) + list(self.path.glob('*RAWDATA*')) + list(self.path.glob('*VoltageRecording_[0-9][0-9][0-9]')):
@@ -154,6 +157,7 @@ class series:
           file_path.unlink()
 
     def process(self):
+      #TODO: if is converted, no need to do again
       if not self.get_xml_path() or not self.ripping_utility_path:
         self.mark_flag('failed')
         return
@@ -176,12 +180,17 @@ class series:
         """Create a dotfile flag to query state persistence."""
         (self.path / f".{name}").touch()
 
+    def check_flag(self, path, name):
+        return (self.path / f".{name}").exists()
+
 #===============================
-if len(sys.argv) > 1:
+if len(sys.argv) > 2:
     series_path = sys.argv[1]
     logger.info(f"Working on series path: {series_path}")
+    dependency_path = sys.argv[2]
+    logger.info(f"Working on dependency path: {dependency_path}")
 else:
-    logger.critical("No series path provided. Abort.")
+    logger.critical("No series path and/or dependency path provided. Abort.")
     sys.exit(1)
-s = series(Path(series_path), use_lscratch=True)
+s = series(Path(series_path), Path(dependency_path), use_lscratch=True)
 s.process()
