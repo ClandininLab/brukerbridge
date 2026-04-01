@@ -67,15 +67,7 @@ class series:
         return
       logger.info("scratch area for ripping: %s", str(self.scratch_path))
       #check if storage is enough
-      cmd = ['du', '-sB', '1', self.path]
-      result = subprocess.run(cmd, capture_output=True, text=True)
-      folder_size = int(result.stdout.split()[0])
-      logger.info(f"Current folder size (GB): {folder_size / 1024.0 / 1024.0 / 1024.0}")
-      cmd = ['df', '--output=avail', '-B', '1', str(self.scratch_path.parent)]
-      result = subprocess.run(cmd, capture_output=True, text=True)
-      scratch_free_size = int(result.stdout.strip().split('\n')[-1])
-      logger.info(f"Scratch available size (GB): {scratch_free_size / 1024.0 / 1024.0 / 1024.0}")
-      if folder_size > scratch_free_size:
+      if not self.check_disk_storage(self.path, self.scratch_path.parent):
         logger.error("Not enough scratch storage for copying raw data, abort using l_scratch")
         self.use_lscratch=False
         return
@@ -91,13 +83,13 @@ class series:
 
     @timing_decorator
     def launch_and_wait_ripping(self):
+      my_env = os.environ.copy()
       if self.use_lscratch:
         path = self.scratch_path
+        my_env["WINEPREFIX"] = str(self.scratch_path.parent)+'/.wine'
       else:
         path = self.path
       logger.info("Using ripping utillity: %s", self.ripping_utility_path)
-      my_env = os.environ.copy()
-      my_env["WINEPREFIX"] = str(self.scratch_path.parent)+'/.wine'
       command = ['singularity', 'exec', '-B', f'{my_env["L_SCRATCH"]}:{my_env["L_SCRATCH"]},{my_env["OAK"]}:{my_env["OAK"]},/tmp:/var/lib/xkb']
       command.extend([str(self.wine_container_path), 'xvfb-run', '-a', 'wine'])
       command.extend([str(self.ripping_utility_path), '-IncludeSubFolders', '-AddRawFileWithSubFolders', 'Z:'+str(PureWindowsPath(path))])
@@ -127,13 +119,14 @@ class series:
         else:
           logger.info("Filelist.txt are now deleted by ripping utility. End.")
           os.killpg(process.pid, signal.SIGTERM)
+          logger.info(f"Disk usage after ripping: {self.get_folder_size_gb(path)} GB")
           return True
 
     @timing_decorator
     def postprocess_file_for_ripping(self):
       if not self.use_lscratch:
         return
-      #TODO: log final disk usage
+      logger.info(f"Disk usage after conversion: {self.get_folder_size_gb(self.scratch_path)} GB")
       logger.info("Moving conversion results from %s to %s", str(self.scratch_path), str(self.path))
       for file_path in list(self.scratch_path.glob("*.nii")) + list(self.scratch_path.glob("*.csv")):
         logger.info("Moving %s to %s", str(file_path), str(self.path))
@@ -182,6 +175,27 @@ class series:
 
     def check_flag(self, name):
         return (self.path / f".{name}").exists()
+
+    def check_disk_storage(self, src_path, dst_path):
+        src_size = self.get_folder_size_gb(src_path)
+        logger.info(f"Current folder size (GB): {src_size}")
+        dst_size = self.get_disk_avail_size_gb(dst_path)
+        logger.info(f"Scratch available size (GB): {dst_size}")
+        return src_size < dst_size
+
+    def get_folder_size_gb(self, path):
+        cmd = ['du', '-sB', '1', path]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        folder_size = int(result.stdout.split()[0])
+        folder_size_gb = folder_size / 1024.0 / 1024.0 / 1024.0
+        return folder_size_gb
+
+    def get_disk_avail_size_gb(self, path):
+      cmd = ['df', '--output=avail', '-B', '1', str(path)]
+      result = subprocess.run(cmd, capture_output=True, text=True)
+      scratch_free_size = int(result.stdout.strip().split('\n')[-1])
+      scratch_free_size_gb = scratch_free_size / 1024.0 / 1024.0 / 1024.0
+      return scratch_free_size_gb
 
 #===============================
 if len(sys.argv) > 2:
