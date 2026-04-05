@@ -158,7 +158,6 @@ class series:
       if not self.launch_and_wait_ripping():
         self.mark_flag('failed')
         return
-      self.mark_flag('ripped')
       logger.info("Converting tiff to nii at: %s", str(self.get_xml_path(self.use_lscratch)))
       try:
         convert_to_nii(self.get_xml_path(self.use_lscratch))

@@ -6,6 +6,8 @@ import sys
 import time
 import math
 
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class acquisition:
     def __init__(self, root: Path):
@@ -125,30 +127,17 @@ class acquisition:
         return time_based_on_folder_size
 
 #=================
-job_dir = Path("/oak/stanford/groups/trc/data/Yilin/BrukerBridge/jobs")
-acq_path = None
-for f in job_dir.iterdir():
-  # pattern: brukerbridge_datetime.job
-  # contains: one line, abs path to an acquisition folder
-  if f.is_file() and f.name.startswith('brukerbridge') and f.name.endswith('job'):
-    with open(f, 'r') as file:
-      path = file.readline().rstrip('\n\r')
-      if file.readline():
-        print("file contains more than 1 line, skip.")
-        continue
-      if not os.path.isdir(path):
-        continue
-    logging.basicConfig(filename=f, level=logging.INFO, filemode='a')
-    logger = logging.getLogger(__name__)
-    logger.info(f"Got path {path} from file {str(f)}")
-    print("start processing")
-    #TODO: what if we have permission issue here?
-    acq_path = Path(path)
-    break
+if len(sys.argv) > 1:
+    acq_path = Path(sys.argv[1])
+    if not acq_path.exists():
+        logger.critical(f"Path {acq_path} is invalid, please check your input.")
+        sys.exit(1)
+    acq_path = acq_path.resolve()
+    logger.info(f"Working on acquisition path: {acq_path}")
+else:
+    logger.critical("No acquisition path provided. Abort.")
+    sys.exit(1)
 
-if not acq_path:
-  print("no job found")
-  sys.exit(0)
 a = acquisition(acq_path)
 a.discover_series()
 a.run_all()
