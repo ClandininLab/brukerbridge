@@ -80,6 +80,8 @@ class series:
       with tarfile.open(self.scratch_path.parent / "wineprefix.tar.gz", "r:gz") as tar:
         # Extract all contents to the specified directory
         tar.extractall(path=self.scratch_path.parent)
+      #TODO: check folder size again, in case other Sherlock job took
+      #      certain portion of l_scratch. If not enough, end and resubmit job
 
     @timing_decorator
     def launch_and_wait_ripping(self):
@@ -149,9 +151,12 @@ class series:
           file_path.unlink()
 
     def process(self):
+      self.remove_flag('failed')
       if self.check_flag('converted'):
+        logger.info("Converted flag found, means this has been processed. Will not process again")
         return
       if not self.get_xml_path() or not self.ripping_utility_path:
+        logger.info("Could not find xml path or ripping utility path. Abort.")
         self.mark_flag('failed')
         return
       self.prepare_file_for_ripping()
@@ -171,6 +176,10 @@ class series:
     def mark_flag(self, name):
         """Create a dotfile flag to query state persistence."""
         (self.path / f".{name}").touch()
+
+    def remove_flag(self, name):
+        if self.check_flag(name):
+          os.remove(self.path / f".{name}")
 
     def check_flag(self, name):
         return (self.path / f".{name}").exists()

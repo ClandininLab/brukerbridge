@@ -71,6 +71,8 @@ class acquisition:
             #otherwise it's a reference, not a copy
             command = command_base[:]
             command.append(f'--time={self.get_required_time(path)}')
+            #NOTE: this storage is not guaranteed throughout the entire job
+            command.append(f'--tmp={self.get_required_storage_gb(path)}G')
             command.append(f'--output={str(path)}/brukerbridge.%j.log')
             command.append(f'--job-name={str(path)}_brukerbridge')
             command.append('--wrap')
@@ -118,13 +120,24 @@ class acquisition:
     def check_flag(self, path, name):
         return (path / f".{name}").exists()
 
-    def get_required_time(self, path):
+    def get_folder_size_gb(self, path):
         cmd = ['du', '-sB', '1', path]
         result = subprocess.run(cmd, capture_output=True, text=True)
         folder_size = int(result.stdout.split()[0])
         folder_size_gb = folder_size / 1024.0 / 1024.0 / 1024.0
-        time_based_on_folder_size = math.ceil(2 + folder_size_gb)
+        return folder_size_gb
+
+    def get_required_time(self, path):
+        folder_size_gb = self.get_folder_size_gb(path)
+        # leave some room for file copy/paste and singularity/wine startup
+        time_based_on_folder_size = math.ceil(10 + folder_size_gb)
         return time_based_on_folder_size
+
+    def get_required_storage_gb(self, path):
+        folder_size_gb = self.get_folder_size_gb(path)
+        # peak storage = wine folder + raw file + ripped file
+        required_storage_gb = math.ceil(10 + folder_size_gb * 2)
+        return required_storage_gb
 
 #=================
 if len(sys.argv) > 1:
