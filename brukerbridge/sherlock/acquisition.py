@@ -16,7 +16,7 @@ class acquisition:
         """
         self.root = root
         self.series_list = []
-        self.dependency_path = Path("/oak/stanford/groups/trc/data/Yilin/BrukerBridge/dependency_root")
+        self.dependency_path = Path("/oak/stanford/groups/trc/BrukerBridge/dependency_root")
         script_path = Path(__file__).resolve()
         self.script_dir = script_path.parent
 
@@ -130,7 +130,7 @@ class acquisition:
     def get_required_time(self, path):
         folder_size_gb = self.get_folder_size_gb(path)
         # leave some room for file copy/paste and singularity/wine startup
-        time_based_on_folder_size = math.ceil(10 + folder_size_gb)
+        time_based_on_folder_size = 2 * math.ceil(10 + folder_size_gb)
         return time_based_on_folder_size
 
     def get_required_storage_gb(self, path):

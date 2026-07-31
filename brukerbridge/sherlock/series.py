@@ -102,11 +102,11 @@ class series:
       logger.info("Started ripping utility from singularity and wine virtualization")
       logger.info("command: %s", " ".join(command))
       #waiting for wine and ripping utility startup
-      time.sleep(30)
+      time.sleep(60)
       while True:
         if any(path.glob('*Filelist.txt')):
           logger.info("Filelist.txt not deleted by ripping utility yet, keep waiting.")
-          time.sleep(10)
+          time.sleep(20)
           cmd = ['find', str(path), '-mmin', '-1', '!', '-name', '*.log']
           result = subprocess.run(cmd, capture_output=True, text=True)
           if any(path.glob('*Filelist.txt')) and not result.stdout:
