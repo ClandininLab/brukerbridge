@@ -64,12 +64,12 @@ class acquisition:
         Process all discovered series.
         """
         submitted_jobnames = []
-        #NOTE: increasing memory for shutil.copy(), not sure why for now
-        command_base = ['sbatch', '--parsable', '--partition=owners', '--ntasks=1', '--cpus-per-task=1', '--mem=3GB']
+        command_base = ['sbatch', '--parsable', '--partition=owners', '--ntasks=1', '--cpus-per-task=1']
 
         for path in self.series_list:
             #otherwise it's a reference, not a copy
             command = command_base[:]
+            command.append(f'--mem={self.get_required_memory_gb(path)}G')
             command.append(f'--time={self.get_required_time(path)}')
             #NOTE: this storage is not guaranteed throughout the entire job
             command.append(f'--tmp={self.get_required_storage_gb(path)}G')
@@ -138,6 +138,16 @@ class acquisition:
         # peak storage = wine folder + raw file + ripped file
         required_storage_gb = math.ceil(10 + folder_size_gb * 2)
         return required_storage_gb
+
+    def get_required_memory_gb(self, path):
+        folder_size_gb = self.get_folder_size_gb(path)
+        # base covers shutil.copy() + wine/singularity overhead; scaling term
+        # covers tifffile building an in-memory page index proportional to
+        # frame count, which for large/long acquisitions (many thousands of
+        # timepoints) can exceed a flat 3GB and trigger an OOM kill during
+        # the tiff->nii conversion step even though conversion itself streams
+        required_memory_gb = math.ceil(4 + folder_size_gb * 1.5)
+        return required_memory_gb
 
 #=================
 if len(sys.argv) > 1:
