@@ -1,12 +1,18 @@
+import gzip as gzip_module
 import logging
 import os
+import shutil
 from xml.etree import ElementTree as ET
 
 import nibabel as nib
 import numpy as np
+from PIL import Image
 from skimage import io
 
 logger = logging.getLogger(__name__)
+
+# NIfTI-1: 348 byte header + 4 byte extension flag
+NII_VOX_OFFSET = 352
 
 
 def tiff_to_nii(xml_file: str, gzip: bool = False):
@@ -62,7 +68,7 @@ def tiff_to_nii(xml_file: str, gzip: bool = False):
     #
     # berger 2024/7/18: removed exception handling, this should raise a fatal
     # error since and would have at the next unbound reference to `img` anyways
-    img = io.imread(fullfile, plugin="pil")
+    img = imread_stack(fullfile)
 
     num_y = np.shape(img)[-2]
     num_x = np.shape(img)[-1]
@@ -76,50 +82,60 @@ def tiff_to_nii(xml_file: str, gzip: bool = False):
         num_x,
     )
 
+    # Handle aborted scans for volumes: a volume whose number of z-slices
+    # differs from the previous one marks an aborted acquisition. Detected up
+    # front so the output can be allocated at its final size; as before, data
+    # stops at the first inconsistent volume and the last volume is discarded.
+    first_bad_volume = num_timepoints
+    if isVolumeSeries:
+        for i in range(1, num_timepoints):
+            if len(sequences[i].findall("Frame")) != len(
+                sequences[i - 1].findall("Frame")
+            ):
+                logger.warning(
+                    "%s: this acquisition was aborted, discarding last volume",
+                    xml_file,
+                )
+                aborted = True
+                first_bad_volume = i
+                break
+
     # loop over channels
     for channel in range(num_channels):
-        last_num_z = None
-        image_array = np.zeros((num_timepoints, num_z, num_y, num_x), dtype=np.uint16)
-        # saved as a single big tif for all time steps
-        if isMultiPageTiff and (isVolumeSeries is False):
-            frames = [sequences[0].findall("Frame")[0]]
-            files = frames[0].findall("File")
-            filename = files[channel].get("filename")
-            fullfile = os.path.join(data_dir, filename)  # type: ignore
-            img = io.imread(fullfile, plugin="pil")  # shape = t, y, x
-            image_array[:, 0, :, :] = img
-        else:
-            # loop over time steps to load one tif at a time
-            for i in range(num_timepoints):
-                if isVolumeSeries:  # For a given volume, get all frames
-                    frames = sequences[i].findall("Frame")
-                    current_num_z = len(frames)
-                    # Handle aborted scans for volumes
-                    if last_num_z is not None:
-                        if current_num_z != last_num_z:
-                            # detected by "Inconsistent number of z-slices"
-                            logger.warning(
-                                "%s: this acquisition was aborted, discarding last volume",
-                                xml_file,
-                            )
-                            aborted = True
-                            break
-                    last_num_z = current_num_z
+        save_name = xml_file[:-4] + "_channel_{}".format(channel + 1) + ".nii"
 
-                    # Flip frame order if a bidirectionalZ upstroke (odd i)
-                    if isBidirectionalZ and (i % 2 != 0):
-                        frames = frames[::-1]
+        if isVolumeSeries:
+            # x, y, z, t (the per-volume transposes below map z, y, x -> x, y, z)
+            num_volumes = num_timepoints - 1 if aborted else num_timepoints
+            shape = (num_x, num_y, num_z, num_volumes)
+            logger.debug("%s, final array shape: %s", xml_file, shape)
+            logger.debug("%s, saving nii as %s", xml_file, save_name)
 
-                else:  # Plane series: Get frame
-                    frames = [sequences[0].findall("Frame")[i]]
+            # stream volumes straight to disk so peak memory is one volume
+            with open(save_name, "wb") as f:
+                f.truncate(NII_VOX_OFFSET + int(np.prod(shape)) * 2)
+            mm = np.memmap(
+                save_name,
+                dtype=np.uint16,
+                mode="r+",
+                offset=NII_VOX_OFFSET,
+                shape=shape,
+                order="F",
+            )
+            for i in range(min(first_bad_volume, shape[-1])):
+                frames = sequences[i].findall("Frame")
+
+                # Flip frame order if a bidirectionalZ upstroke (odd i)
+                if isBidirectionalZ and (i % 2 != 0):
+                    frames = frames[::-1]
 
                 if isMultiPageTiff:
                     files = frames[0].findall("File")
                     filename = files[channel].get("filename")
                     fullfile = os.path.join(data_dir, filename)  # type: ignore
-                    img = io.imread(fullfile, plugin="pil")  # shape = z, y, x
-                    image_array[i, :, :, :] = img
+                    volume = imread_stack(fullfile)  # shape = z, y, x
                 else:
+                    volume = np.zeros((num_z, num_y, num_x), dtype=np.uint16)
                     # loop over depth (z-dim)
                     for j, frame in enumerate(frames):
                         # For a given frame, get filename
@@ -128,35 +144,58 @@ def tiff_to_nii(xml_file: str, gzip: bool = False):
                         fullfile = os.path.join(data_dir, filename)  # type: ignore
 
                         # Read in file
-                        img = io.imread(fullfile, plugin="pil")
-                        image_array[i, j, :, :] = img
+                        volume[j, :, :] = io.imread(fullfile, plugin="pil")
 
-        if isVolumeSeries:
-            # Will start as t,z,x,y.
-            image_array = np.moveaxis(image_array, 1, -1)
-            image_array = np.moveaxis(image_array, 0, -1)
-            image_array = np.swapaxes(image_array, 0, 1)  # x, y, z, t
+                # z, y, x -> x, y, z
+                mm[..., i] = np.transpose(volume, (2, 1, 0))
+                if (i + 1) % 100 == 0:
+                    mm.flush()
+            mm.flush()
+            del mm
 
-            # Toss last volume if aborted
-            if aborted:
-                image_array = image_array[:, :, :, :-1]
+            write_nii1_header(save_name, shape)
+            assert nib.load(save_name).shape == shape
+
+            if gzip:
+                with open(save_name, "rb") as f_in, gzip_module.open(
+                    save_name + ".gz", "wb"
+                ) as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+                os.remove(save_name)
+            continue
+
+        image_array = np.zeros((num_timepoints, num_z, num_y, num_x), dtype=np.uint16)
+        # saved as a single big tif for all time steps
+        if isMultiPageTiff:
+            frames = [sequences[0].findall("Frame")[0]]
+            files = frames[0].findall("File")
+            filename = files[channel].get("filename")
+            fullfile = os.path.join(data_dir, filename)  # type: ignore
+            img = imread_stack(fullfile)  # shape = t, y, x
+            image_array[:, 0, :, :] = img
         else:
-            image_array = np.squeeze(image_array)  # t, y, x
-            image_array = np.moveaxis(image_array, 0, -1)
-            image_array = np.swapaxes(image_array, 0, 1)  # x, y, t
+            # loop over time steps to load one tif at a time
+            for i in range(num_timepoints):
+                # Plane series: Get frame
+                frame = sequences[0].findall("Frame")[i]
+                files = frame.findall("File")
+                filename = files[channel].get("filename")
+                fullfile = os.path.join(data_dir, filename)  # type: ignore
+
+                # Read in file
+                img = io.imread(fullfile, plugin="pil")
+                image_array[i, 0, :, :] = img
+
+        image_array = np.squeeze(image_array)  # t, y, x
+        image_array = np.moveaxis(image_array, 0, -1)
+        image_array = np.swapaxes(image_array, 0, 1)  # x, y, t
 
         logger.debug("%s, final array shape: %s", xml_file, image_array.shape)
 
         aff = np.eye(4)
-        save_name = xml_file[:-4] + "_channel_{}".format(channel + 1) + ".nii"
         if gzip:
             save_name += ".gz"
-        if isVolumeSeries:
-            img = nib.nifti1.Nifti1Image(
-                image_array, aff
-            )  # 32 bit: maxes out at 32767 in any one dimension
-        else:
-            img = nib.nifti2.Nifti2Image(image_array, aff)  # 64 bit
+        img = nib.nifti2.Nifti2Image(image_array, aff)  # 64 bit
         image_array = None  # for memory
         logger.debug("%s, saving nii as %s", xml_file, save_name)
         img.to_filename(save_name)
@@ -166,6 +205,39 @@ def tiff_to_nii(xml_file: str, gzip: bool = False):
         # for "memory management". I suspect this is unnecessary but if OOM
         # issues are experienced in this method in the future a gc.collect here
         # may help
+
+
+def imread_stack(fullfile):
+    """Read a (multipage) TIFF with skimage's PIL plugin as (pages, y, x).
+
+    skimage.io.imread moves a leading axis of length 3 or 4 to the end, assuming
+    it is colour channels, so a 3- or 4-page stack comes back as (y, x, pages).
+    Undo that here.
+    """
+    img = io.imread(fullfile, plugin="pil")
+    with Image.open(fullfile) as pil_img:
+        n_pages = getattr(pil_img, "n_frames", 1)
+    if n_pages > 1 and img.ndim == 3 and img.shape[0] != n_pages:
+        img = np.moveaxis(img, -1, 0)
+    return img
+
+
+def write_nii1_header(save_name, shape):
+    """Write the NIfTI-1 header (uint16, identity affine) for a .nii file whose
+    data block starts at NII_VOX_OFFSET. Byte-identical to what
+    nib.Nifti1Image(data, np.eye(4)).to_filename() produces."""
+    header = nib.Nifti1Header()
+    header.set_data_shape(shape)
+    header.set_data_dtype(np.uint16)
+    header.set_sform(np.eye(4), code="aligned")
+    header.set_qform(np.eye(4), code="unknown")
+    header["vox_offset"] = NII_VOX_OFFSET
+    block = header.binaryblock
+    # 348 byte header followed by 4 byte extension flag (no extensions)
+    assert len(block) + 4 == NII_VOX_OFFSET
+    with open(save_name, "r+b") as f:
+        f.seek(0)
+        f.write(block + b"\x00\x00\x00\x00")
 
 
 def get_num_channels(sequence):

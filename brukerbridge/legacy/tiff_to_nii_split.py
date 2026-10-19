@@ -6,12 +6,24 @@ import nibabel as nib
 import numpy as np
 from matplotlib.pyplot import imread
 
+from brukerbridge.legacy.tiff_to_nii import imread_stack
+
 logger = logging.getLogger(__name__)
+
+# max timepoints per output nii file; bounds memory use
+MAX_TIMEPOINTS = 500
+# anat scans have higher resolution, so use fewer timepoints per file
+ANAT_MAX_TIMEPOINTS = 10
 
 
 def tiff_to_nii(xml_file: str):
     aborted = False
     data_dir, _ = os.path.split(xml_file)
+
+    # Check if multipage tiff files
+    companion_filepath = xml_file.split(".")[0] + ".companion.ome"
+    isMultiPageTiff = os.path.exists(companion_filepath)
+    logger.debug("%s, isMultiPageTiff: %s", xml_file, isMultiPageTiff)
 
     tree = ET.parse(xml_file)
     root = tree.getroot()
@@ -48,9 +60,12 @@ def tiff_to_nii(xml_file: str):
     num_channels = get_num_channels(sequences[0])
     test_file = sequences[0].findall("Frame")[0].findall("File")[0].get("filename")
     fullfile = os.path.join(data_dir, test_file)  # type: ignore
-    img = imread(fullfile)
-    num_y = np.shape(img)[0]
-    num_x = np.shape(img)[1]
+    if isMultiPageTiff:
+        img = imread_stack(fullfile)  # shape = z (or t), y, x
+    else:
+        img = imread(fullfile)
+    num_y = np.shape(img)[-2]
+    num_x = np.shape(img)[-1]
     logger.debug(
         "%s, num_channels: %s, num_timepoints: %s, num_z: %s, num_y: %s, num_x: %s",
         xml_file,
@@ -64,11 +79,11 @@ def tiff_to_nii(xml_file: str):
     ##determine if it is too big for memory
     ##create range of timepoints to use
     # max_timepoints = 3384 #this number comes from Luke's data where the memory is sufficient to process the nii file. The other dimensions matter too in terms of overall size (256 x 128 x 49), but for now I'll assume the other dims are similar
-    max_timepoints = 500  # still memory error so going to 1000
+    max_timepoints = MAX_TIMEPOINTS  # still memory error so going to 1000
 
     # ##add condition for anat to decrease the timepoints since the resolution is higher
     if "anat" in xml_file:
-        max_timepoints = 10
+        max_timepoints = ANAT_MAX_TIMEPOINTS
 
     # this will give all the starting points for the different broken up nii files
     timepoint_starts = list(range(0, num_timepoints, max_timepoints))
@@ -102,6 +117,7 @@ def tiff_to_nii(xml_file: str):
             xml_file,
             data_dir,
             aborted,
+            isMultiPageTiff,
         )
 
 
@@ -123,6 +139,7 @@ def create_nii_file(
     xml_file,
     data_dir,
     aborted,
+    isMultiPageTiff=False,
 ):
     """this creates a nii file in the same way as before, but it creates seperate nii files if the original data is bigger than the size memory allows.
     The save name appends on the starting frame number to keep the files seperate
@@ -136,8 +153,18 @@ def create_nii_file(
         image_array = np.zeros(
             ((timepoint_end - timepoint_start), num_z, num_y, num_x), dtype=np.uint16
         )
+        # plane series saved as a single big tif for all time steps
+        if isMultiPageTiff and (isVolumeSeries is False):
+            frame = sequences[0].findall("Frame")[0]
+            filename = frame.findall("File")[channel].get("filename")
+            fullfile = os.path.join(data_dir, filename)
+            img = imread_stack(fullfile)  # shape = t, y, x
+            image_array[:, 0, :, :] = img[timepoint_start:timepoint_end]
+            img = None  # for memory
         # loop over time
         for i in range(timepoint_start, timepoint_end):
+            if isMultiPageTiff and (isVolumeSeries is False):
+                break
             if isVolumeSeries:  # For a given volume, get all frames
                 frames = sequences[i].findall("Frame")
                 current_num_z = len(frames)
@@ -156,6 +183,18 @@ def create_nii_file(
                 # Flip frame order if a bidirectionalZ upstroke (odd i)
                 if isBidirectionalZ and (i % 2 != 0):
                     frames = frames[::-1]
+
+                if isMultiPageTiff:
+                    # whole volume is one multipage tiff, shape = z, y, x
+                    files = frames[0].findall("File")
+                    filename = files[channel].get("filename")
+                    fullfile = os.path.join(data_dir, filename)
+                    volume = imread_stack(fullfile)
+                    # pages are in acquisition order, so flip z on upstrokes
+                    if isBidirectionalZ and (i % 2 != 0):
+                        volume = volume[::-1]
+                    image_array[i - timepoint_start, :, :, :] = volume
+                    continue
 
             else:  # Plane series: Get frame
                 frames = [sequences[0].findall("Frame")[i]]
