@@ -170,21 +170,33 @@ def test_tiff_to_nii_split_matches_tiff_to_nii(acquisition, monkeypatch):
         np.testing.assert_array_equal(np.concatenate(chunk_data, axis=-1), full)
 
 
-def test_tiff_to_nii_split_bidirectional_multipage(tmp_path):
-    xml_path, data = make_acquisition(tmp_path, multipage=True)
+@pytest.mark.parametrize("multipage", [True, False], ids=["multipage", "per-plane"])
+@pytest.mark.parametrize("converter", ["tiff_to_nii", "tiff_to_nii_split"])
+def test_bidirectional_z_is_consistent_across_volumes(tmp_path, multipage, converter):
+    # synthetic data is in acquisition order, as the scope writes it: odd
+    # volumes are z upstrokes, so their planes / pages run top to bottom
+    xml_path, data = make_acquisition(tmp_path, multipage=multipage)
     tree = ET.parse(xml_path)
     for sequence in tree.getroot().findall("Sequence"):
         sequence.set("bidirectionalZ", "True")
     tree.write(xml_path)
 
-    tiff_to_nii_split.tiff_to_nii(xml_path)
+    if converter == "tiff_to_nii":
+        tiff_to_nii(xml_path)
+    else:
+        tiff_to_nii_split.tiff_to_nii(xml_path)
 
     for c in range(NUM_CHANNELS):
-        (chunk,) = split_chunks(xml_path, c)
-        expected = data[c].copy()
-        expected[1] = expected[1, ::-1]  # odd volumes are z upstrokes
+        # every output volume should have z in the same (downstroke) order
+        volumes = data[c].copy()
+        volumes[1::2] = volumes[1::2, ::-1]
+        ref = old_in_ram_reference(str(tmp_path / f"ref_{c}.nii"), volumes)
+        if converter == "tiff_to_nii":
+            out = nii_path(xml_path, c)
+        else:
+            (out,) = split_chunks(xml_path, c)
         np.testing.assert_array_equal(
-            np.asarray(nib.load(chunk).dataobj), np.transpose(expected, (3, 2, 1, 0))
+            np.asarray(nib.load(out).dataobj), np.asarray(nib.load(ref).dataobj)
         )
 
 

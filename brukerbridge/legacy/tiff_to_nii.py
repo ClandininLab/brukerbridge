@@ -134,6 +134,11 @@ def tiff_to_nii(xml_file: str, gzip: bool = False):
                     filename = files[channel].get("filename")
                     fullfile = os.path.join(data_dir, filename)  # type: ignore
                     volume = imread_stack(fullfile)  # shape = z, y, x
+                    # all frames point to the same file, so reordering frames
+                    # above is a no-op; pages are in acquisition order, so
+                    # flip z on upstrokes
+                    if isBidirectionalZ and (i % 2 != 0):
+                        volume = volume[::-1]
                 else:
                     volume = np.zeros((num_z, num_y, num_x), dtype=np.uint16)
                     # loop over depth (z-dim)
