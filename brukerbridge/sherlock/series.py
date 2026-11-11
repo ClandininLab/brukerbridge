@@ -41,7 +41,7 @@ class series:
         candidates = list(path.glob("*Series*.xml"))
         valid_candidates = [
             c for c in candidates
-            if "VoltageRecording" not in c.name
+            if "Voltage" not in c.name
         ]
         if not valid_candidates:
             return None
