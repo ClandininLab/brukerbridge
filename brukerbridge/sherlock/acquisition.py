@@ -92,7 +92,8 @@ class acquisition:
             )
             # If squeue output is sparse (only header), jobs are finished
             if len(status.stdout.strip().split('\n')) <= 1:
-                logger.info("All jobs finished.")
+                logger.info("All jobs finished. Please check each job's status below:")
+                self.get_all_state()
                 break
             else:
                 logger.info("Job status:\n" + status.stdout)
